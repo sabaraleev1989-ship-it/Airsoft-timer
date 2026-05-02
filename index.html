@@ -36,25 +36,22 @@
             flex-direction: column;
         }
 
-        /* Предупреждение при портретной ориентации (если авто-поворот не сработал) */
-        .rotate-hint {
+        /* Затемнение для портретного режима */
+        .portrait-block {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 500;
-            display: flex;
+            display: none;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: 700;
+            gap: 24px;
             text-align: center;
             padding: 20px;
-            pointer-events: none;
-            color: #fff;
-            display: none;
         }
         @media (orientation: portrait) {
-            .rotate-hint {
+            .portrait-block {
                 display: flex;
             }
             .topbar, .main-arena {
@@ -62,6 +59,26 @@
             }
         }
 
+        .portrait-block .msg {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .portrait-block .btn {
+            padding: 14px 30px;
+            border-radius: 40px;
+            border: none;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-transform: uppercase;
+            background: var(--gold);
+            color: #000;
+            border: 2px solid var(--gold);
+        }
+
+        /* Основной интерфейс (альбомный) */
         .topbar {
             display: flex;
             align-items: center;
@@ -148,6 +165,13 @@
             min-width: 0;
         }
         .team-panel:active { transform: scale(0.97); }
+        .team-panel.inactive-for-start {
+            cursor: default;
+            filter: grayscale(0.4);
+        }
+        .team-panel.inactive-for-start:active {
+            transform: none;
+        }
 
         .dim-overlay {
             position: absolute;
@@ -294,9 +318,13 @@
     </style>
 </head>
 <body>
-    <!-- Подсказка при портретной ориентации (если авто-поворот не сработал) -->
-    <div class="rotate-hint" id="rotateHint">📱 Пожалуйста, поверните устройство<br>в альбомный режим</div>
+    <!-- Блок при портретной ориентации -->
+    <div class="portrait-block" id="portraitBlock">
+        <div class="msg">📱 Поверните устройство<br>в альбомный режим</div>
+        <button class="btn" id="btnForceLandscape">🔄 Альбомный режим</button>
+    </div>
 
+    <!-- Основной интерфейс -->
     <div class="topbar">
         <div class="game-timer-box">
             <span class="game-timer-label">⏱ МАТЧ</span>
@@ -310,20 +338,20 @@
     </div>
 
     <div class="main-arena">
-        <div class="team-panel" id="panelA">
+        <div class="team-panel inactive-for-start" id="panelA">
             <div class="dim-overlay"></div>
             <div class="team-content">
                 <div class="team-name" id="nameA">КРАСНЫЕ</div>
                 <div class="team-time" id="timeA">00:00</div>
-                <div class="team-status" id="statusA">НАЖМИТЕ ДЛЯ ЗАХВАТА</div>
+                <div class="team-status" id="statusA">ОЖИДАЙТЕ СТАРТА</div>
             </div>
         </div>
-        <div class="team-panel" id="panelB">
+        <div class="team-panel inactive-for-start" id="panelB">
             <div class="dim-overlay"></div>
             <div class="team-content">
                 <div class="team-name" id="nameB">СИНИЕ</div>
                 <div class="team-time" id="timeB">00:00</div>
-                <div class="team-status" id="statusB">НАЖМИТЕ ДЛЯ ЗАХВАТА</div>
+                <div class="team-status" id="statusB">ОЖИДАЙТЕ СТАРТА</div>
             </div>
         </div>
     </div>
@@ -360,7 +388,7 @@
 
     <script>
         (function() {
-            // DOM
+            // DOM-элементы
             const gameTimerDisplay = document.getElementById('gameTimerDisplay');
             const panelA = document.getElementById('panelA');
             const panelB = document.getElementById('panelB');
@@ -383,13 +411,14 @@
             const inputColorB = document.getElementById('inputColorB');
             const btnSaveSettings = document.getElementById('btnSaveSettings');
             const btnCloseSettings = document.getElementById('btnCloseSettings');
-            const rotateHint = document.getElementById('rotateHint');
+            const portraitBlock = document.getElementById('portraitBlock');
+            const btnForceLandscape = document.getElementById('btnForceLandscape');
 
             // Состояние
             const state = {
                 matchDuration: 10 * 60,
                 timeLeft: 10 * 60,
-                active: false,
+                matchActive: false,          // игра запущена (после нажатия Play)
                 ended: false,
                 currentHolder: null,
                 timeA: 0,
@@ -456,10 +485,10 @@
             let tickTimer = null;
             function startTickSound() {
                 stopTickSound();
-                if (state.active && state.currentHolder !== null) {
+                if (state.matchActive && state.currentHolder !== null) {
                     playTick();
                     tickTimer = setInterval(() => {
-                        if (state.active && state.currentHolder !== null) playTick();
+                        if (state.matchActive && state.currentHolder !== null) playTick();
                         else stopTickSound();
                     }, 1000);
                 }
@@ -491,25 +520,59 @@
 
             function updateUI() {
                 gameTimerDisplay.textContent = formatTime(state.timeLeft);
-                gameTimerDisplay.classList.toggle('warning', state.active && state.timeLeft <= 60 && state.timeLeft > 0);
+                gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft <= 60 && state.timeLeft > 0);
+
                 timeAEl.textContent = formatTime(state.timeA);
                 timeBEl.textContent = formatTime(state.timeB);
+
                 const holder = state.currentHolder;
                 const isEnded = state.ended;
-                statusAEl.textContent = isEnded ? (state.timeA > state.timeB ? '🏆 ПОБЕДИТЕЛЬ' : '') : (holder === 'A' ? '⚡ УДЕРЖАНИЕ' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА');
-                statusBEl.textContent = isEnded ? (state.timeB > state.timeA ? '🏆 ПОБЕДИТЕЛЬ' : '') : (holder === 'B' ? '⚡ УДЕРЖАНИЕ' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА');
-                btnPlayPause.textContent = state.active ? '⏸' : '▶';
-                btnPlayPause.classList.toggle('active', state.active);
-                btnEndGame.style.display = state.ended ? 'flex' : 'none';
+                const gameStarted = state.matchActive;
+
+                // Статусы
+                if (!gameStarted && !isEnded) {
+                    statusAEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
+                    statusBEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
+                } else if (isEnded) {
+                    statusAEl.textContent = state.timeA > state.timeB ? '🏆 ПОБЕДИТЕЛЬ' : '';
+                    statusBEl.textContent = state.timeB > state.timeA ? '🏆 ПОБЕДИТЕЛЬ' : '';
+                } else if (holder === 'A') {
+                    statusAEl.textContent = '⚡ УДЕРЖАНИЕ';
+                    statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                } else if (holder === 'B') {
+                    statusBEl.textContent = '⚡ УДЕРЖАНИЕ';
+                    statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                } else {
+                    statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                    statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                }
+
+                // Активация/деактивация панелей
+                if (gameStarted && !isEnded) {
+                    panelA.classList.remove('inactive-for-start');
+                    panelB.classList.remove('inactive-for-start');
+                } else {
+                    panelA.classList.add('inactive-for-start');
+                    panelB.classList.add('inactive-for-start');
+                }
+
+                // Подсветка / затемнение
                 panelA.classList.remove('active-holder', 'dimmed');
                 panelB.classList.remove('active-holder', 'dimmed');
-                if (!isEnded && holder === 'A') {
-                    panelA.classList.add('active-holder');
-                    panelB.classList.add('dimmed');
-                } else if (!isEnded && holder === 'B') {
-                    panelB.classList.add('active-holder');
-                    panelA.classList.add('dimmed');
+                if (gameStarted && !isEnded) {
+                    if (holder === 'A') {
+                        panelA.classList.add('active-holder');
+                        panelB.classList.add('dimmed');
+                    } else if (holder === 'B') {
+                        panelB.classList.add('active-holder');
+                        panelA.classList.add('dimmed');
+                    }
                 }
+
+                // Кнопки управления
+                btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
+                btnPlayPause.classList.toggle('active', state.matchActive);
+                btnEndGame.style.display = state.ended ? 'flex' : 'none';
                 btnLandscape.classList.toggle('landscape-active', state.landscapeLocked);
             }
 
@@ -523,9 +586,9 @@
                 updateUI();
             }
 
+            // Захват точки – только если игра активна
             function capture(team) {
-                if (state.ended) return;
-                if (!state.active) startMatch();
+                if (state.ended || !state.matchActive) return;
                 if (state.currentHolder === team) return;
                 state.currentHolder = team;
                 startTickSound();
@@ -545,14 +608,25 @@
 
             function startMatch() {
                 if (state.ended) resetMatch();
-                state.active = true;
+                state.matchActive = true;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
                 if (state.currentHolder) startTickSound();
             }
-            function pauseMatch() { state.active = false; state.lastTick = null; stopTickSound(); updateUI(); }
-            function toggleMatch() { if (!state.ended) state.active ? pauseMatch() : startMatch(); }
+
+            function pauseMatch() {
+                state.matchActive = false;
+                state.lastTick = null;
+                stopTickSound();
+                updateUI();
+            }
+
+            function toggleMatch() {
+                if (state.ended) return;
+                state.matchActive ? pauseMatch() : startMatch();
+            }
+
             function resetMatch() {
                 pauseMatch();
                 state.timeLeft = state.matchDuration;
@@ -564,16 +638,28 @@
                 updateUI();
                 btnEndGame.style.display = 'none';
             }
+
             function endMatchByTimer() {
-                state.active = false; state.ended = true; state.currentHolder = null;
-                stopTickSound(); startSiren(); updateUI();
+                state.matchActive = false;
+                state.ended = true;
+                state.currentHolder = null;
+                stopTickSound();
+                startSiren();
+                updateUI();
                 btnEndGame.style.display = 'flex';
             }
-            function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); btnEndGame.style.display = 'none'; }
+
+            function finishGame() {
+                stopSiren();
+                state.ended = false;
+                state.currentHolder = null;
+                updateUI();
+                btnEndGame.style.display = 'none';
+            }
 
             function gameTick() {
                 const now = Date.now();
-                if (!state.active || !state.lastTick) { state.lastTick = now; return; }
+                if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
                 const delta = (now - state.lastTick) / 1000;
                 if (delta <= 0) return;
                 state.timeLeft -= delta;
@@ -613,9 +699,9 @@
             inputColorA.addEventListener('input', () => { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
             inputColorB.addEventListener('input', () => { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
 
+            // Альбомная ориентация
             async function lockLandscape() {
                 try {
-                    // Пытаемся войти в полноэкранный режим (необходимо для блокировки ориентации)
                     if (document.fullscreenEnabled && !document.fullscreenElement) {
                         await document.documentElement.requestFullscreen();
                     }
@@ -623,41 +709,52 @@
                         await screen.orientation.lock('landscape');
                         state.landscapeLocked = true;
                         updateUI();
-                        return;
+                        return true;
                     }
                 } catch (e) {}
-                // Если не получилось – показываем подсказку повернуть устройство
-                rotateHint.style.display = 'flex';
+                return false;
             }
 
-            function toggleLandscapeLock() {
+            async function attemptAutoLandscape() {
+                const success = await lockLandscape();
+                if (!success) {
+                    // Показываем блок при портрете
+                    portraitBlock.style.display = 'flex';
+                } else {
+                    portraitBlock.style.display = 'none';
+                }
+            }
+
+            // Ручная блокировка по кнопке
+            btnForceLandscape.addEventListener('click', async () => {
+                await lockLandscape();
+                // После блокировки скрываем портретный блок (если стиль media portrait его скрывает)
+                portraitBlock.style.display = 'none';
+            });
+
+            btnLandscape.addEventListener('click', async () => {
                 if (state.landscapeLocked) {
                     if (screen.orientation && screen.orientation.unlock) {
                         screen.orientation.unlock();
                         state.landscapeLocked = false;
                         updateUI();
-                        rotateHint.style.display = 'none';
                     }
                 } else {
-                    lockLandscape().then(() => {
-                        if (state.landscapeLocked) rotateHint.style.display = 'none';
-                    });
+                    await lockLandscape();
                 }
-            }
-
-            // При загрузке сразу вызываем блокировку
-            window.addEventListener('load', () => {
-                lockLandscape();
             });
 
-            // События
+            // При загрузке
+            window.addEventListener('load', attemptAutoLandscape);
+
+            // События кнопок команд
             panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
             panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
             panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
             panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
+
             btnPlayPause.addEventListener('click', toggleMatch);
             btnReset.addEventListener('click', resetMatch);
-            btnLandscape.addEventListener('click', toggleLandscapeLock);
             btnSettings.addEventListener('click', openSettings);
             btnEndGame.addEventListener('click', finishGame);
             btnSaveSettings.addEventListener('click', saveSettings);
@@ -671,7 +768,7 @@
                     case 'b': capture('B'); e.preventDefault(); break;
                     case ' ': toggleMatch(); e.preventDefault(); break;
                     case 'r': resetMatch(); e.preventDefault(); break;
-                    case 'l': toggleLandscapeLock(); e.preventDefault(); break;
+                    case 'l': btnLandscape.click(); e.preventDefault(); break;
                     case 's': openSettings(); e.preventDefault(); break;
                     case 'escape': closeSettings(); break;
                 }
