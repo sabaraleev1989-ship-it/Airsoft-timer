@@ -187,6 +187,40 @@
             0%,100% { box-shadow: 0 0 40px rgba(255,255,255,0.6), inset 0 0 40px rgba(0,0,0,0.4); }
             50% { box-shadow: 0 0 70px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.15); }
         }
+
+        /* Кнопка разблокировки звука */
+        .unlock-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            opacity: 1;
+            pointer-events: auto;
+            transition: opacity 0.4s;
+        }
+        .unlock-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .unlock-btn {
+            padding: 14px 30px;
+            border-radius: 40px;
+            border: none;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-transform: uppercase;
+            background: var(--gold);
+            color: #000;
+            border: 2px solid var(--gold);
+        }
+
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -265,6 +299,12 @@
     </style>
 </head>
 <body>
+    <!-- Оверлей разблокировки звука -->
+    <div class="unlock-overlay" id="unlockOverlay">
+        <div style="font-size:2rem; text-align:center;">🔊 Нажмите, чтобы включить звук</div>
+        <button class="unlock-btn" id="unlockBtn">ВКЛЮЧИТЬ ЗВУК</button>
+    </div>
+
     <div class="topbar">
         <div class="game-timer-box">
             <span class="game-timer-label">⏱ МАТЧ</span>
@@ -328,7 +368,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=4')
+                navigator.serviceWorker.register('sw.js')
                     .then(reg => console.log('SW зарегистрирован'))
                     .catch(err => console.log('Ошибка SW:', err));
             });
@@ -357,6 +397,8 @@
             const inputColorB = document.getElementById('inputColorB');
             const btnSaveSettings = document.getElementById('btnSaveSettings');
             const btnCloseSettings = document.getElementById('btnCloseSettings');
+            const unlockOverlay = document.getElementById('unlockOverlay');
+            const unlockBtn = document.getElementById('unlockBtn');
 
             // Состояние
             const state = {
@@ -369,9 +411,12 @@
                 timeB: 0,
                 lastTick: null,
                 tickInterval: null,
-                sirenAudio: null,        // финальная сирена
+                sirenInterval: null,
+                sirenOsc: null,
+                sirenGain: null,
+                audioUnlocked: false,
                 warningPlayed: false,
-                prevTimeLeft: null,      // для отслеживания перехода через 5 минут
+                prevTimeLeft: null,
                 audioCtx: null,
                 nameA: 'КРАСНЫЕ',
                 nameB: 'СИНИЕ',
@@ -386,7 +431,28 @@
                 return state.audioCtx;
             }
 
+            function unlockAudio() {
+                if (state.audioUnlocked) return;
+                getAudioContext();
+                // Создаём пустой звук для разблокировки HTMLAudioElement
+                const silent = new Audio();
+                silent.play().then(() => {
+                    silent.pause();
+                    state.audioUnlocked = true;
+                    console.log('Аудио разблокировано');
+                    unlockOverlay.classList.add('hidden');
+                }).catch(e => {
+                    // Если не удалось, всё равно показываем кнопку
+                    console.warn('Ошибка разблокировки аудио:', e);
+                });
+            }
+
+            unlockBtn.addEventListener('click', () => {
+                unlockAudio();
+            });
+
             function playTick() {
+                if (!state.audioUnlocked) return;
                 try {
                     const ctx = getAudioContext();
                     const osc = ctx.createOscillator();
@@ -402,73 +468,136 @@
                 } catch (e) {}
             }
 
-            function unlockAudio() {
-                if (state.audioUnlocked) return;
-                const silent = new Audio();
-                silent.play().then(() => {
-                    silent.pause();
-                    state.audioUnlocked = true;
-                    console.log('Аудио разблокировано');
-                }).catch(e => console.warn('Ошибка разблокировки аудио:', e));
-                getAudioContext();
-            }
-
-            // Сирена (финал) – зацикленный siren.mp3
-            function stopSiren() {
-                if (state.sirenAudio) {
-                    state.sirenAudio.pause();
-                    state.sirenAudio.currentTime = 0;
-                    state.sirenAudio = null;
+            // Встроенная сирена (синтезированная, как запасной вариант)
+            function stopBuiltinSiren() {
+                if (state.sirenInterval) {
+                    clearInterval(state.sirenInterval);
+                    state.sirenInterval = null;
+                }
+                if (state.sirenOsc) {
+                    try { state.sirenOsc.stop(); } catch(e) {}
+                    state.sirenOsc = null;
+                }
+                if (state.sirenGain) {
+                    state.sirenGain.disconnect();
+                    state.sirenGain = null;
                 }
             }
 
-            function startSiren() {
-                stopSiren();
-                unlockAudio();
-                state.sirenAudio = new Audio('siren.mp3');
-                state.sirenAudio.loop = true;
-                state.sirenAudio.volume = 1.0;
-                state.sirenAudio.play().then(() => {
-                    console.log('Финальная сирена запущена');
+            function startBuiltinSiren() {
+                stopBuiltinSiren();
+                if (!state.audioUnlocked) return;
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                gain.gain.setValueAtTime(0.9, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                state.sirenOsc = osc;
+                state.sirenGain = gain;
+
+                let freqHigh = true;
+                state.sirenInterval = setInterval(() => {
+                    if (!state.sirenOsc) return;
+                    freqHigh = !freqHigh;
+                    state.sirenOsc.frequency.setValueAtTime(freqHigh ? 900 : 600, getAudioContext().currentTime);
+                }, 400);
+            }
+
+            // Попытка загрузить аудиофайлы, если не получится – синтез
+            function playFileOrFallback(fileName, fallbackFunction, loop = false) {
+                if (!state.audioUnlocked) {
+                    // если звук не разблокирован, всё равно ничего не выйдет
+                    return;
+                }
+                const audio = new Audio(fileName);
+                audio.loop = loop;
+                audio.volume = 1.0;
+                audio.play().then(() => {
+                    console.log(`Файл ${fileName} воспроизводится`);
                 }).catch(e => {
-                    console.warn('Сирена не заиграла:', e);
+                    console.warn(`Не удалось загрузить ${fileName}, использую встроенный звук`);
+                    fallbackFunction();
+                });
+                return audio;
+            }
+
+            function startSiren() {
+                if (!state.audioUnlocked) return;
+                // Останавливаем любую предыдущую
+                stopBuiltinSiren();
+                if (state.fileSiren) {
+                    state.fileSiren.pause();
+                    state.fileSiren = null;
+                }
+                // Пробуем файл, при ошибке – синтезированная
+                const audio = new Audio('siren.mp3');
+                audio.loop = true;
+                audio.volume = 1.0;
+                audio.play().then(() => {
+                    console.log('Финальная сирена из файла');
+                    state.fileSiren = audio;
+                }).catch(() => {
+                    console.log('Файл siren.mp3 недоступен, играю встроенную');
+                    startBuiltinSiren();
                 });
             }
 
-            // Предупреждение за 5 минут – siren1.mp3, один раз
+            function stopSiren() {
+                stopBuiltinSiren();
+                if (state.fileSiren) {
+                    state.fileSiren.pause();
+                    state.fileSiren = null;
+                }
+            }
+
             function playWarning() {
-                if (state.warningPlayed || !state.matchActive) return;
+                if (!state.audioUnlocked || state.warningPlayed || !state.matchActive) return;
                 state.warningPlayed = true;
-                unlockAudio();
+                stopTickSound();
 
-                stopTickSound(); // останавливаем тикание
+                const onEnd = () => {
+                    if (state.matchActive && state.currentHolder !== null) startTickSound();
+                };
 
-                const warningAudio = new Audio('siren1.mp3');
-                warningAudio.volume = 1.0;
-                warningAudio.play().then(() => {
-                    console.log('Предупреждение (5 минут) проигрывается');
-                }).catch(e => console.warn('Предупреждение не заиграло:', e));
-
-                warningAudio.addEventListener('ended', () => {
-                    if (state.matchActive && state.currentHolder !== null) {
-                        startTickSound();
-                    }
-                    console.log('Предупреждение завершено');
-                });
-
-                warningAudio.addEventListener('error', (e) => {
-                    console.error('Ошибка загрузки siren1.mp3:', e);
-                    if (state.matchActive && state.currentHolder !== null) {
-                        startTickSound();
-                    }
+                const audio = new Audio('siren1.mp3');
+                audio.volume = 1.0;
+                audio.play().then(() => {
+                    console.log('Предупреждение из файла');
+                    audio.addEventListener('ended', onEnd);
+                }).catch(() => {
+                    console.log('Файл siren1.mp3 недоступен, играю встроенное предупреждение');
+                    // Встроенное предупреждение: три коротких гудка
+                    const ctx = getAudioContext();
+                    let count = 0;
+                    const beep = () => {
+                        if (count >= 3) {
+                            onEnd();
+                            return;
+                        }
+                        count++;
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(600, ctx.currentTime);
+                        gain.gain.setValueAtTime(1.0, ctx.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(ctx.currentTime);
+                        osc.stop(ctx.currentTime + 0.25);
+                        setTimeout(beep, 400);
+                    };
+                    beep();
                 });
             }
 
-            // Тикание
             let tickTimer = null;
             function startTickSound() {
                 stopTickSound();
-                if (state.matchActive && state.currentHolder !== null) {
+                if (state.matchActive && state.currentHolder !== null && state.audioUnlocked) {
                     playTick();
                     tickTimer = setInterval(() => {
                         if (state.matchActive && state.currentHolder !== null) playTick();
@@ -477,10 +606,7 @@
                 }
             }
             function stopTickSound() {
-                if (tickTimer) {
-                    clearInterval(tickTimer);
-                    tickTimer = null;
-                }
+                if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
             }
 
             function formatTime(sec) {
@@ -588,10 +714,14 @@
 
             function startMatch() {
                 if (state.ended) resetMatch();
-                unlockAudio();
+                if (!state.audioUnlocked) {
+                    // Если звук не разблокирован, показываем оверлей
+                    unlockOverlay.classList.remove('hidden');
+                    return;
+                }
                 state.matchActive = true;
                 state.warningPlayed = false;
-                state.prevTimeLeft = state.timeLeft; // запоминаем начальное значение
+                state.prevTimeLeft = state.timeLeft;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
@@ -652,7 +782,7 @@
                 const prev = state.timeLeft;
                 state.timeLeft -= delta;
 
-                // Проверка на 5‑минутное предупреждение: переход с > 300 к <= 300
+                // Проверка перехода через 5 минут
                 if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
                     playWarning();
                 }
@@ -725,6 +855,11 @@
             resetMatch();
             inputNameA.value = getColorName(inputColorA.value);
             inputNameB.value = getColorName(inputColorB.value);
+
+            // Показываем оверлей разблокировки при загрузке, если звук ещё не разрешён
+            if (!state.audioUnlocked) {
+                unlockOverlay.classList.remove('hidden');
+            }
         })();
     </script>
 </body>
