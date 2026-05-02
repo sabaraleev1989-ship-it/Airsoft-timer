@@ -378,8 +378,8 @@
                 lastTick: null,
                 tickInterval: null,
                 sirenInterval: null,
-                sirenOsc: [],
-                sirenGain: [],
+                sirenOsc: null,     // одиночный осциллятор
+                sirenGain: null,
                 audioCtx: null,
                 nameA: 'КРАСНЫЕ',
                 nameB: 'СИНИЕ',
@@ -408,54 +408,42 @@
                     osc.stop(ctx.currentTime + 0.08);
                 } catch (e) {}
             }
+
+            // Классическая сирена (один осциллятор sawtooth)
             function stopSiren() {
                 if (state.sirenInterval) {
                     clearInterval(state.sirenInterval);
                     state.sirenInterval = null;
                 }
-                state.sirenOsc.forEach(osc => {
-                    try { osc.stop(); } catch(e) {}
-                });
-                state.sirenOsc = [];
-                state.sirenGain.forEach(gain => gain.disconnect());
-                state.sirenGain = [];
+                if (state.sirenOsc) {
+                    try { state.sirenOsc.stop(); } catch(e) {}
+                    state.sirenOsc = null;
+                }
+                if (state.sirenGain) {
+                    state.sirenGain.disconnect();
+                    state.sirenGain = null;
+                }
             }
+
             function startSiren() {
                 stopSiren();
                 const ctx = getAudioContext();
-                const now = ctx.currentTime;
-
-                const osc1 = ctx.createOscillator();
-                const osc2 = ctx.createOscillator();
-                const gain1 = ctx.createGain();
-                const gain2 = ctx.createGain();
-
-                osc1.type = 'sawtooth';
-                osc2.type = 'square';
-
-                gain1.gain.setValueAtTime(1.2, now);
-                gain2.gain.setValueAtTime(1.0, now);
-
-                osc1.connect(gain1);
-                osc2.connect(gain2);
-                gain1.connect(ctx.destination);
-                gain2.connect(ctx.destination);
-
-                osc1.start(now);
-                osc2.start(now);
-
-                state.sirenOsc = [osc1, osc2];
-                state.sirenGain = [gain1, gain2];
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                gain.gain.setValueAtTime(0.9, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                state.sirenOsc = osc;
+                state.sirenGain = gain;
 
                 let freqHigh = true;
                 state.sirenInterval = setInterval(() => {
-                    if (!state.sirenOsc.length) return;
+                    if (!state.sirenOsc) return;
                     freqHigh = !freqHigh;
-                    const f1 = freqHigh ? 1100 : 350;
-                    const f2 = freqHigh ? 1400 : 500;
-                    if (osc1) osc1.frequency.setValueAtTime(f1, ctx.currentTime);
-                    if (osc2) osc2.frequency.setValueAtTime(f2, ctx.currentTime);
-                }, 250);
+                    state.sirenOsc.frequency.setValueAtTime(freqHigh ? 900 : 600, getAudioContext().currentTime);
+                }, 400);
             }
 
             let tickTimer = null;
