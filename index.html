@@ -369,8 +369,9 @@
                 timeB: 0,
                 lastTick: null,
                 tickInterval: null,
-                sirenAudio: null,       // для siren.mp3
-                warningPlayed: false,   // чтобы предупреждение прозвучало только один раз
+                sirenAudio: null,        // финальная сирена
+                warningPlayed: false,
+                audioUnlocked: false,    // флаг разблокировки звука
                 audioCtx: null,
                 nameA: 'КРАСНЫЕ',
                 nameB: 'СИНИЕ',
@@ -401,6 +402,20 @@
                 } catch (e) {}
             }
 
+            // Разблокировка аудио (вызывается при старте игры)
+            function unlockAudio() {
+                if (state.audioUnlocked) return;
+                // Создаём пустой звук и проигрываем его для разблокировки HTMLAudioElement
+                const silent = new Audio();
+                silent.play().then(() => {
+                    silent.pause();
+                    state.audioUnlocked = true;
+                    console.log('Аудио разблокировано');
+                }).catch(e => console.warn('Ошибка разблокировки аудио:', e));
+                // Также пробуем разблокировать AudioContext
+                getAudioContext();
+            }
+
             // Сирена (финал) – зацикленный siren.mp3
             function stopSiren() {
                 if (state.sirenAudio) {
@@ -412,16 +427,25 @@
 
             function startSiren() {
                 stopSiren();
+                if (!state.audioUnlocked) unlockAudio();
                 state.sirenAudio = new Audio('siren.mp3');
                 state.sirenAudio.loop = true;
                 state.sirenAudio.volume = 1.0;
-                state.sirenAudio.play().catch(e => console.warn('Сирена не заиграла:', e));
+                state.sirenAudio.play().catch(e => {
+                    console.warn('Сирена не заиграла:', e);
+                    // Попробуем ещё раз после небольшой задержки
+                    setTimeout(() => {
+                        if (state.sirenAudio) state.sirenAudio.play().catch(e => console.warn('Повторная ошибка сирены:', e));
+                    }, 500);
+                });
             }
 
             // Предупреждение за 5 минут – siren1.mp3, один раз
             function playWarning() {
-                if (state.warningPlayed) return;
+                if (state.warningPlayed || !state.matchActive) return;
                 state.warningPlayed = true;
+                if (!state.audioUnlocked) unlockAudio();
+
                 // Останавливаем тикание
                 const wasTicking = tickTimer !== null;
                 stopTickSound();
@@ -430,8 +454,17 @@
                 warningAudio.volume = 1.0;
                 warningAudio.play().catch(e => console.warn('Предупреждение не заиграло:', e));
 
-                // После окончания возобновляем тикание, если игра активна и есть захват
                 warningAudio.addEventListener('ended', () => {
+                    // После окончания возобновляем тикание, если игра активна и есть захват
+                    if (state.matchActive && state.currentHolder !== null) {
+                        startTickSound();
+                    }
+                    console.log('Предупреждение завершено');
+                });
+
+                warningAudio.addEventListener('error', (e) => {
+                    console.error('Ошибка загрузки siren1.mp3:', e);
+                    // Возобновляем тикание даже при ошибке
                     if (state.matchActive && state.currentHolder !== null) {
                         startTickSound();
                     }
@@ -562,8 +595,10 @@
 
             function startMatch() {
                 if (state.ended) resetMatch();
+                // Разблокируем аудио при первом старте
+                unlockAudio();
                 state.matchActive = true;
-                state.warningPlayed = false; // сброс предупреждения при новом старте
+                state.warningPlayed = false;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
