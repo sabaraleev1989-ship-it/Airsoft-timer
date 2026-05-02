@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Захват точки · Страйкбол</title>
+    <style>
+        :root {
+            --color-team-a: #e63946;
+            --color-team-b: #1d3557;
+            --bg: #0a0a10;
+            --surface: #1a1a26;
+            --text: #f0f0f0;
+            --gold: #f4a261;
+            --radius: 28px;
+            --transition: 0.2s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            height: 100dvh;
+            width: 100vw;
+            width: 100dvw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            touch-action: manipulation;
+        }
+
+        /* Верхняя панель управления */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--surface);
+            border-bottom: 2px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            z-index: 10;
+        }
+
+        .game-timer-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #00000033;
+            border-radius: 50px;
+            padding: 6px 18px;
+            backdrop-filter: blur(8px);
+        }
+        .game-timer-label {
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            color: #aaa;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .game-timer-display {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 0 12px rgba(255,255,255,0.3);
+            min-width: 100px;
+            text-align: center;
+        }
+        .game-timer-display.warning {
+            color: #e76f51;
+            animation: pulse 0.7s infinite;
+        }
+
+        .btn-icon {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            font-size: 1.5rem;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+            backdrop-filter: blur(4px);
+        }
+        .btn-icon:hover { background: rgba(255,255,255,0.2); }
+        .btn-icon:active { transform: scale(0.92); background: rgba(255,255,255,0.3); }
+        .btn-icon.active { background: var(--gold); border-color: var(--gold); color: #000; }
+
+        .main-arena {
+            flex: 1;
+            display: flex;
+            gap: 2px;
+            padding: 4px;
+            min-height: 0;
+        }
+
+        .team-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            border: 4px solid rgba(255,255,255,0.2);
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+        }
+        .team-panel:active {
+            transform: scale(0.97);
+            filter: brightness(1.3);
+        }
+
+        .team-name {
+            font-size: clamp(1.4rem, 4vw, 2.4rem);
+            font-weight: 800;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.7);
+            margin-bottom: 10px;
+        }
+        .team-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(3.5rem, 14vw, 8rem);
+            font-weight: 900;
+            text-shadow: 0 0 40px currentColor;
+            line-height: 1;
+        }
+        .team-status {
+            margin-top: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            background: rgba(0,0,0,0.5);
+            padding: 4px 20px;
+            border-radius: 30px;
+            letter-spacing: 1px;
+        }
+
+        /* Модальное окно настроек */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal {
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 24px;
+            padding: 28px 24px;
+            max-width: 480px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .modal h2 {
+            text-align: center;
+            font-size: 1.6rem;
+            font-weight: 700;
+        }
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .setting-row label {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #ccc;
+            flex: 1;
+        }
+        .setting-row input[type="number"],
+        .setting-row input[type="text"] {
+            background: #0f0f17;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-align: center;
+            width: 100px;
+        }
+        .setting-row input[type="color"] {
+            width: 50px;
+            height: 40px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 40px;
+            border: none;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: var(--transition);
+            text-transform: uppercase;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn:hover { background: rgba(255,255,255,0.2); }
+        .btn.primary { background: var(--gold); color: #000; border-color: var(--gold); }
+        .btn.danger { background: #e63946; border-color: #e63946; }
+
+        @keyframes pulse {
+            0%,100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        @media (max-width: 600px) {
+            .topbar { padding: 8px 8px; gap: 6px; }
+            .game-timer-display { font-size: 1.6rem; }
+            .btn-icon { width: 38px; height: 38px; font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="game-timer-box">
+            <span class="game-timer-label">⏱ МАТЧ</span>
+            <span class="game-timer-display" id="gameTimerDisplay">10:00</span>
+        </div>
+        <button class="btn-icon" id="btnPlayPause" title="Старт / Пауза">▶</button>
+        <button class="btn-icon" id="btnReset" title="Сбросить матч">↺</button>
+        <button class="btn-icon" id="btnFullscreen" title="На весь экран">⛶</button>
+        <button class="btn-icon" id="btnSettings" title="Настройки">⚙️</button>
+        <button class="btn-icon" id="btnEndGame" title="Завершить игру (остановить сирену)" style="display:none; background:#e76f51;">🔔</button>
+    </div>
+
+    <div class="main-arena" id="arena">
+        <div class="team-panel" id="panelA">
+            <div class="team-name" id="nameA">Красные</div>
+            <div class="team-time" id="timeA">00:00</div>
+            <div class="team-status" id="statusA"></div>
+        </div>
+        <div class="team-panel" id="panelB">
+            <div class="team-name" id="nameB">Синие</div>
+            <div class="team-time" id="timeB">00:00</div>
+            <div class="team-status" id="statusB"></div>
+        </div>
+    </div>
+
+    <!-- Настройки -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2>⚙️ Настройки</h2>
+            <div class="setting-row">
+                <label>⏳ Длительность матча (мин)</label>
+                <input type="number" id="inputMatchMin" value="10" min="1" max="120">
+            </div>
+            <div class="setting-row">
+                <label>🔴 Название команды A</label>
+                <input type="text" id="inputNameA" value="Красные" maxlength="12">
+            </div>
+            <div class="setting-row">
+                <label>🎨 Цвет кнопки A</label>
+                <input type="color" id="inputColorA" value="#e63946">
+            </div>
+            <div class="setting-row">
+                <label>🔵 Название команды B</label>
+                <input type="text" id="inputNameB" value="Синие" maxlength="12">
+            </div>
+            <div class="setting-row">
+                <label>🎨 Цвет кнопки B</label>
+                <input type="color" id="inputColorB" value="#1d3557">
+            </div>
+            <div class="modal-actions">
+                <button class="btn primary" id="btnSaveSettings">💾 Сохранить</button>
+                <button class="btn danger" id="btnCloseSettings">✖ Закрыть</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // DOM элементы
+            const gameTimerDisplay = document.getElementById('gameTimerDisplay');
+            const panelA = document.getElementById('panelA');
+            const panelB = document.getElementById('panelB');
+            const timeAEl = document.getElementById('timeA');
+            const timeBEl = document.getElementById('timeB');
+            const nameAEl = document.getElementById('nameA');
+            const nameBEl = document.getElementById('nameB');
+            const statusAEl = document.getElementById('statusA');
+            const statusBEl = document.getElementById('statusB');
+            const btnPlayPause = document.getElementById('btnPlayPause');
+            const btnReset = document.getElementById('btnReset');
+            const btnFullscreen = document.getElementById('btnFullscreen');
+            const btnSettings = document.getElementById('btnSettings');
+            const btnEndGame = document.getElementById('btnEndGame');
+            const modalOverlay = document.getElementById('modalOverlay');
+            const inputMatchMin = document.getElementById('inputMatchMin');
+            const inputNameA = document.getElementById('inputNameA');
+            const inputColorA = document.getElementById('inputColorA');
+            const inputNameB = document.getElementById('inputNameB');
+            const inputColorB = document.getElementById('inputColorB');
+            const btnSaveSettings = document.getElementById('btnSaveSettings');
+            const btnCloseSettings = document.getElementById('btnCloseSettings');
+
+            // Состояние
+            const state = {
+                matchDuration: 10 * 60, // секунды
+                timeLeft: 10 * 60,
+                active: false,
+                ended: false, // true когда время вышло, но сирена ещё звучит
+                currentHolder: null, // 'A' или 'B'
+                timeA: 0,
+                timeB: 0,
+                lastTick: null,
+                tickInterval: null,
+                sirenInterval: null,
+                sirenOsc: null,
+                sirenGain: null,
+                audioCtx: null,
+                // Настройки
+                nameA: 'Красные',
+                nameB: 'Синие',
+                colorA: '#e63946',
+                colorB: '#1d3557',
+            };
+
+            // --- ЗВУКИ ---
+            function getAudioContext() {
+                if (!state.audioCtx) {
+                    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+                return state.audioCtx;
+            }
+
+            function playTick() {
+                try {
+                    const ctx = getAudioContext();
+                    const now = ctx.currentTime;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(1200, now);
+                    gain.gain.setValueAtTime(1.0, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } catch(e) {}
+            }
+
+            function stopSiren() {
+                if (state.sirenInterval) {
+                    clearInterval(state.sirenInterval);
+                    state.sirenInterval = null;
+                }
+                if (state.sirenOsc) {
+                    try { state.sirenOsc.stop(); } catch(e) {}
+                    state.sirenOsc = null;
+                }
+                if (state.sirenGain) {
+                    state.sirenGain.disconnect();
+                    state.sirenGain = null;
+                }
+            }
+
+            function startSiren() {
+                stopSiren();
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                gain.gain.setValueAtTime(0.9, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                state.sirenOsc = osc;
+                state.sirenGain = gain;
+
+                let freqHigh = true;
+                state.sirenInterval = setInterval(() => {
+                    if (!state.sirenOsc) return;
+                    freqHigh = !freqHigh;
+                    state.sirenOsc.frequency.setValueAtTime(freqHigh ? 900 : 600, getAudioContext().currentTime);
+                }, 400);
+            }
+
+            // --- ТИК-ТАК ВО ВРЕМЯ УДЕРЖАНИЯ ---
+            let tickTimer = null;
+            function startTickSound() {
+                if (tickTimer) clearInterval(tickTimer);
+                if (state.active && state.currentHolder !== null) {
+                    playTick(); // сразу при захвате
+                    tickTimer = setInterval(() => {
+                        if (state.active && state.currentHolder !== null) {
+                            playTick();
+                        } else {
+                            stopTickSound();
+                        }
+                    }, 1000);
+                }
+            }
+            function stopTickSound() {
+                if (tickTimer) {
+                    clearInterval(tickTimer);
+                    tickTimer = null;
+                }
+            }
+
+            // --- ФОРМАТ ВРЕМЕНИ ---
+            function formatTime(sec) {
+                const m = Math.floor(sec / 60);
+                const s = Math.floor(sec % 60);
+                return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            }
+
+            // --- ОБНОВЛЕНИЕ UI ---
+            function updateUI() {
+                // Таймер матча
+                gameTimerDisplay.textContent = formatTime(state.timeLeft);
+                if (state.active && state.timeLeft <= 60 && state.timeLeft > 0) {
+                    gameTimerDisplay.classList.add('warning');
+                } else {
+                    gameTimerDisplay.classList.remove('warning');
+                }
+
+                // Времена команд
+                timeAEl.textContent = formatTime(state.timeA);
+                timeBEl.textContent = formatTime(state.timeB);
+
+                // Статусы
+                if (state.ended) {
+                    statusAEl.textContent = state.timeA > state.timeB ? '🏆 ПОБЕДИТЕЛЬ' : '';
+                    statusBEl.textContent = state.timeB > state.timeA ? '🏆 ПОБЕДИТЕЛЬ' : '';
+                } else if (state.currentHolder === 'A') {
+                    statusAEl.textContent = '⚡ ЗАХВАТ';
+                    statusBEl.textContent = '';
+                } else if (state.currentHolder === 'B') {
+                    statusBEl.textContent = '⚡ ЗАХВАТ';
+                    statusAEl.textContent = '';
+                } else {
+                    statusAEl.textContent = '';
+                    statusBEl.textContent = '';
+                }
+
+                // Кнопка play/pause
+                btnPlayPause.textContent = state.active ? '⏸' : '▶';
+                if (state.active) btnPlayPause.classList.add('active');
+                else btnPlayPause.classList.remove('active');
+
+                // Кнопка завершения игры (сирена)
+                btnEndGame.style.display = state.ended ? 'flex' : 'none';
+            }
+
+            function applySettingsToUI() {
+                document.documentElement.style.setProperty('--color-team-a', state.colorA);
+                document.documentElement.style.setProperty('--color-team-b', state.colorB);
+                panelA.style.backgroundColor = state.colorA;
+                panelB.style.backgroundColor = state.colorB;
+                nameAEl.textContent = state.nameA;
+                nameBEl.textContent = state.nameB;
+                updateUI();
+            }
+
+            // --- ЗАХВАТ ТОЧКИ ---
+            function capture(team) {
+                if (state.ended) return; // игра завершена, сирена визжит, захват невозможен
+                if (!state.active) {
+                    // Если игра не запущена, запускаем при первом захвате
+                    startMatch();
+                }
+                if (state.currentHolder === team) return; // уже держит
+                state.currentHolder = team;
+                startTickSound();
+                // Дополнительный звук захвата (короткий)
+                try {
+                    const ctx = getAudioContext();
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(team === 'A' ? 800 : 600, ctx.currentTime);
+                    g.gain.setValueAtTime(0.6, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+                    o.connect(g); g.connect(ctx.destination);
+                    o.start(); o.stop(ctx.currentTime + 0.22);
+                } catch(e) {}
+                updateUI();
+            }
+
+            // --- УПРАВЛЕНИЕ МАТЧЕМ ---
+            function startMatch() {
+                if (state.ended) {
+                    resetMatch();
+                }
+                state.active = true;
+                state.lastTick = Date.now();
+                if (!state.tickInterval) {
+                    state.tickInterval = setInterval(gameTick, 100);
+                }
+                updateUI();
+                if (state.currentHolder !== null) startTickSound();
+            }
+
+            function pauseMatch() {
+                state.active = false;
+                state.lastTick = null;
+                stopTickSound();
+                updateUI();
+            }
+
+            function toggleMatch() {
+                if (state.ended) return;
+                if (state.active) pauseMatch();
+                else startMatch();
+            }
+
+            function resetMatch() {
+                pauseMatch();
+                state.timeLeft = state.matchDuration;
+                state.ended = false;
+                state.currentHolder = null;
+                state.timeA = 0;
+                state.timeB = 0;
+                stopSiren();
+                stopTickSound();
+                if (state.tickInterval) {
+                    clearInterval(state.tickInterval);
+                    state.tickInterval = null;
+                }
+                updateUI();
+                btnEndGame.style.display = 'none';
+            }
+
+            function endMatchByTimer() {
+                state.active = false;
+                state.ended = true;
+                state.currentHolder = null;
+                stopTickSound();
+                startSiren();
+                updateUI();
+                btnEndGame.style.display = 'flex';
+            }
+
+            function finishGame() {
+                // Нажата кнопка "Завершить игру"
+                stopSiren();
+                state.ended = false; // полностью завершаем
+                // Оставляем время команд на экране, матч не активен
+                updateUI();
+                btnEndGame.style.display = 'none';
+                // Можно сбросить currentHolder для чистоты
+                state.currentHolder = null;
+            }
+
+            // Главный тик (каждые 100 мс)
+            function gameTick() {
+                const now = Date.now();
+                if (!state.active || !state.lastTick) {
+                    state.lastTick = now;
+                    return;
+                }
+                const delta = (now - state.lastTick) / 1000;
+                if (delta <= 0) return;
+
+                // Уменьшаем время матча
+                state.timeLeft -= delta;
+                if (state.timeLeft <= 0) {
+                    state.timeLeft = 0;
+                    state.lastTick = null;
+                    endMatchByTimer();
+                    return;
+                }
+
+                // Начисляем время удержания
+                if (state.currentHolder === 'A') {
+                    state.timeA += delta;
+                } else if (state.currentHolder === 'B') {
+                    state.timeB += delta;
+                }
+
+                state.lastTick = now;
+                updateUI();
+            }
+
+            // --- НАСТРОЙКИ ---
+            function openSettings() {
+                inputMatchMin.value = Math.round(state.matchDuration / 60);
+                inputNameA.value = state.nameA;
+                inputColorA.value = state.colorA;
+                inputNameB.value = state.nameB;
+                inputColorB.value = state.colorB;
+                modalOverlay.classList.add('open');
+            }
+            function closeSettings() {
+                modalOverlay.classList.remove('open');
+            }
+            function saveSettings() {
+                let mins = parseInt(inputMatchMin.value, 10);
+                if (isNaN(mins) || mins < 1) mins = 10;
+                state.matchDuration = mins * 60;
+                state.nameA = inputNameA.value.trim() || 'Команда A';
+                state.nameB = inputNameB.value.trim() || 'Команда B';
+                state.colorA = inputColorA.value;
+                state.colorB = inputColorB.value;
+                applySettingsToUI();
+                resetMatch(); // сбросить матч при изменении настроек
+                closeSettings();
+            }
+
+            // --- ПОЛНЫЙ ЭКРАН ---
+            function toggleFullscreen() {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    const el = document.documentElement;
+                    if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                }
+            }
+
+            // --- СОБЫТИЯ ---
+            panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
+            panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
+            panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
+            panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
+
+            btnPlayPause.addEventListener('click', toggleMatch);
+            btnReset.addEventListener('click', resetMatch);
+            btnFullscreen.addEventListener('click', toggleFullscreen);
+            btnSettings.addEventListener('click', openSettings);
+            btnEndGame.addEventListener('click', finishGame);
+            btnSaveSettings.addEventListener('click', saveSettings);
+            btnCloseSettings.addEventListener('click', closeSettings);
+            modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeSettings(); });
+
+            // Горячие клавиши
+            window.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                switch (e.key.toLowerCase()) {
+                    case 'a': capture('A'); e.preventDefault(); break;
+                    case 'b': capture('B'); e.preventDefault(); break;
+                    case ' ': toggleMatch(); e.preventDefault(); break;
+                    case 'r': resetMatch(); e.preventDefault(); break;
+                    case 'f': toggleFullscreen(); e.preventDefault(); break;
+                    case 's': openSettings(); e.preventDefault(); break;
+                    case 'escape': closeSettings(); break;
+                }
+            });
+
+            // Инициализация
+            applySettingsToUI();
+            resetMatch();
+        })();
+    </script>
+</body>
+</html>
