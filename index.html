@@ -39,7 +39,6 @@
             touch-action: manipulation;
         }
 
-        /* ВЕРХНЯЯ ПАНЕЛЬ */
         .topbar {
             display: flex;
             align-items: center;
@@ -96,20 +95,11 @@
             transition: var(--transition);
             backdrop-filter: blur(4px);
         }
-        .btn-icon:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        .btn-icon:active {
-            transform: scale(0.92);
-            background: rgba(255, 255, 255, 0.3);
-        }
-        .btn-icon.active {
-            background: var(--gold);
-            border-color: var(--gold);
-            color: #000;
-        }
+        .btn-icon:hover { background: rgba(255, 255, 255, 0.2); }
+        .btn-icon:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.3); }
+        .btn-icon.active { background: var(--gold); border-color: var(--gold); color: #000; }
+        .btn-icon.landscape-active { background: #2a9d8f; border-color: #2a9d8f; } /* кнопка альбомного режима */
 
-        /* АРЕНА – ГОРИЗОНТАЛЬНЫЕ КНОПКИ */
         .main-arena {
             flex: 1;
             display: flex;
@@ -120,7 +110,6 @@
             min-height: 0;
         }
 
-        /* ПАНЕЛЬ КОМАНДЫ */
         .team-panel {
             flex: 1;
             display: flex;
@@ -134,13 +123,9 @@
             position: relative;
             overflow: hidden;
             box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
-            background-color: var(--color-team-a); /* переопределяется JS */
         }
-        .team-panel:active {
-            transform: scale(0.97);
-        }
+        .team-panel:active { transform: scale(0.97); }
 
-        /* Затемняющий слой (неактивная панель) */
         .dim-overlay {
             position: absolute;
             inset: 0;
@@ -151,11 +136,8 @@
             transition: opacity 0.3s;
             z-index: 1;
         }
-        .team-panel.dimmed .dim-overlay {
-            opacity: 1;
-        }
+        .team-panel.dimmed .dim-overlay { opacity: 1; }
 
-        /* Контент панели всегда поверх overlay */
         .team-content {
             position: relative;
             z-index: 2;
@@ -167,7 +149,6 @@
             padding: 10px;
         }
 
-        /* Стили текста – мощная тень для читаемости на любом фоне */
         .team-name {
             font-size: clamp(1.6rem, 4vw, 2.6rem);
             font-weight: 800;
@@ -199,22 +180,15 @@
             white-space: nowrap;
         }
 
-        /* Анимация активной панели */
         .team-panel.active-holder {
             animation: activeGlow 1.2s infinite;
             border-color: rgba(255, 255, 255, 0.7);
         }
         @keyframes activeGlow {
-            0%,
-            100% {
-                box-shadow: 0 0 60px rgba(255, 255, 255, 0.7), inset 0 0 60px rgba(0, 0, 0, 0.4);
-            }
-            50% {
-                box-shadow: 0 0 120px rgba(255, 255, 255, 0.9), inset 0 0 100px rgba(255, 255, 255, 0.2);
-            }
+            0%,100% { box-shadow: 0 0 60px rgba(255,255,255,0.7), inset 0 0 60px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 0 120px rgba(255,255,255,0.9), inset 0 0 100px rgba(255,255,255,0.2); }
         }
 
-        /* МОДАЛЬНОЕ ОКНО */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -228,10 +202,7 @@
             pointer-events: none;
             transition: opacity 0.3s;
         }
-        .modal-overlay.open {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        .modal-overlay.open { opacity: 1; pointer-events: auto; }
         .modal {
             background: var(--surface);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -243,11 +214,7 @@
             flex-direction: column;
             gap: 18px;
         }
-        .modal h2 {
-            text-align: center;
-            font-size: 1.6rem;
-            font-weight: 700;
-        }
+        .modal h2 { text-align: center; font-size: 1.6rem; font-weight: 700; }
         .setting-row {
             display: flex;
             align-items: center;
@@ -255,12 +222,7 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-        .setting-row label {
-            font-weight: 600;
-            font-size: 1rem;
-            color: #ccc;
-            flex: 1;
-        }
+        .setting-row label { font-weight: 600; font-size: 1rem; color: #ccc; flex: 1; }
         .setting-row input[type="number"],
         .setting-row input[type="text"] {
             background: #0f0f17;
@@ -273,6 +235,11 @@
             text-align: center;
             width: 110px;
         }
+        .setting-row input[type="text"]:read-only {
+            opacity: 0.7;
+            cursor: default;
+            background: #1a1a24;
+        }
         .setting-row input[type="color"] {
             width: 55px;
             height: 42px;
@@ -281,12 +248,7 @@
             cursor: pointer;
             border-radius: 8px;
         }
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
         .btn {
             padding: 12px 24px;
             border-radius: 40px;
@@ -301,40 +263,16 @@
             color: #fff;
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        .btn.primary {
-            background: var(--gold);
-            color: #000;
-            border-color: var(--gold);
-        }
-        .btn.danger {
-            background: #e63946;
-            border-color: #e63946;
-        }
+        .btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .btn.primary { background: var(--gold); color: #000; border-color: var(--gold); }
+        .btn.danger { background: #e63946; border-color: #e63946; }
 
-        @keyframes pulse-warn {
-            0%,
-            100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.4;
-            }
-        }
+        @keyframes pulse-warn { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
 
-        /* Адаптация под альбомную ориентацию */
         @media (orientation: landscape) {
-            .team-name {
-                font-size: clamp(1.4rem, 3.5vw, 2.2rem);
-            }
-            .team-time {
-                font-size: clamp(3rem, 12vw, 7rem);
-            }
-            .team-status {
-                font-size: clamp(0.9rem, 2vw, 1.3rem);
-            }
+            .team-name { font-size: clamp(1.4rem, 3.5vw, 2.2rem); }
+            .team-time { font-size: clamp(3rem, 12vw, 7rem); }
+            .team-status { font-size: clamp(0.9rem, 2vw, 1.3rem); }
         }
     </style>
 </head>
@@ -346,13 +284,12 @@
         </div>
         <button class="btn-icon" id="btnPlayPause" title="Старт / Пауза">▶</button>
         <button class="btn-icon" id="btnReset" title="Сбросить матч">↺</button>
-        <button class="btn-icon" id="btnFullscreen" title="На весь экран">⛶</button>
+        <button class="btn-icon" id="btnLandscape" title="Альбомный режим (заблокировать горизонтально)">🔄</button>
         <button class="btn-icon" id="btnSettings" title="Настройки">⚙️</button>
         <button class="btn-icon" id="btnEndGame" title="Завершить игру (остановить сирену)" style="display:none; background:#e76f51;">🔔</button>
     </div>
 
     <div class="main-arena" id="arena">
-        <!-- Команда A -->
         <div class="team-panel" id="panelA">
             <div class="dim-overlay"></div>
             <div class="team-content">
@@ -361,7 +298,6 @@
                 <div class="team-status" id="statusA">НАЖМИТЕ ДЛЯ ЗАХВАТА</div>
             </div>
         </div>
-        <!-- Команда B -->
         <div class="team-panel" id="panelB">
             <div class="dim-overlay"></div>
             <div class="team-content">
@@ -372,7 +308,6 @@
         </div>
     </div>
 
-    <!-- Настройки -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
             <h2>⚙️ Настройки</h2>
@@ -382,7 +317,7 @@
             </div>
             <div class="setting-row">
                 <label>🔴 Название команды A</label>
-                <input type="text" id="inputNameA" value="КРАСНЫЕ" maxlength="12">
+                <input type="text" id="inputNameA" value="КРАСНЫЕ" readonly>
             </div>
             <div class="setting-row">
                 <label>🎨 Цвет кнопки A</label>
@@ -390,7 +325,7 @@
             </div>
             <div class="setting-row">
                 <label>🔵 Название команды B</label>
-                <input type="text" id="inputNameB" value="СИНИЕ" maxlength="12">
+                <input type="text" id="inputNameB" value="СИНИЕ" readonly>
             </div>
             <div class="setting-row">
                 <label>🎨 Цвет кнопки B</label>
@@ -405,7 +340,7 @@
 
     <script>
         (function() {
-            // DOM
+            // DOM-элементы
             const gameTimerDisplay = document.getElementById('gameTimerDisplay');
             const panelA = document.getElementById('panelA');
             const panelB = document.getElementById('panelB');
@@ -417,7 +352,7 @@
             const statusBEl = document.getElementById('statusB');
             const btnPlayPause = document.getElementById('btnPlayPause');
             const btnReset = document.getElementById('btnReset');
-            const btnFullscreen = document.getElementById('btnFullscreen');
+            const btnLandscape = document.getElementById('btnLandscape');
             const btnSettings = document.getElementById('btnSettings');
             const btnEndGame = document.getElementById('btnEndGame');
             const modalOverlay = document.getElementById('modalOverlay');
@@ -429,13 +364,13 @@
             const btnSaveSettings = document.getElementById('btnSaveSettings');
             const btnCloseSettings = document.getElementById('btnCloseSettings');
 
-            // Состояние
+            // Состояние приложения
             const state = {
                 matchDuration: 10 * 60,
                 timeLeft: 10 * 60,
                 active: false,
                 ended: false,
-                currentHolder: null,
+                currentHolder: null, // 'A', 'B' или null
                 timeA: 0,
                 timeB: 0,
                 lastTick: null,
@@ -448,15 +383,13 @@
                 nameB: 'СИНИЕ',
                 colorA: '#e63946',
                 colorB: '#1d3557',
-                // Флаги, чтобы не перезаписывать вручную введённые названия при автозамене
-                userEditedNameA: false,
-                userEditedNameB: false,
+                landscapeLocked: false,
             };
 
-            // --- ЗВУК ---
+            // --- ЗВУКОВАЯ СИСТЕМА ---
             function getAudioContext() {
                 if (!state.audioCtx) {
-                    state.audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 }
                 if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
                 return state.audioCtx;
@@ -516,7 +449,6 @@
             }
 
             let tickTimer = null;
-
             function startTickSound() {
                 stopTickSound();
                 if (state.active && state.currentHolder !== null) {
@@ -538,20 +470,18 @@
                 }
             }
 
-            // --- ФОРМАТ ВРЕМЕНИ ---
+            // --- ФОРМАТИРОВАНИЕ ---
             function formatTime(sec) {
                 const m = Math.floor(sec / 60);
                 const s = Math.floor(sec % 60);
                 return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
             }
 
-            // --- ОПРЕДЕЛЕНИЕ НАЗВАНИЯ ЦВЕТА ---
+            // --- ОПРЕДЕЛЕНИЕ НАЗВАНИЯ ПО ЦВЕТУ ---
             function getColorName(hex) {
-                // Простое сопоставление по близости к основным цветам
                 const r = parseInt(hex.slice(1, 3), 16);
                 const g = parseInt(hex.slice(3, 5), 16);
                 const b = parseInt(hex.slice(5, 7), 16);
-
                 const colors = [
                     { name: 'Красные', r: 220, g: 50, b: 50 },
                     { name: 'Синие', r: 30, g: 60, b: 130 },
@@ -564,7 +494,6 @@
                     { name: 'Розовые', r: 240, g: 120, b: 160 },
                     { name: 'Голубые', r: 70, g: 180, b: 210 },
                 ];
-
                 let minDist = Infinity;
                 let closest = 'Команда';
                 for (const c of colors) {
@@ -580,7 +509,7 @@
                 return closest;
             }
 
-            // --- UI ОБНОВЛЕНИЕ ---
+            // --- ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ---
             function updateUI() {
                 gameTimerDisplay.textContent = formatTime(state.timeLeft);
                 gameTimerDisplay.classList.toggle('warning', state.active && state.timeLeft <= 60 && state.timeLeft > 0);
@@ -620,6 +549,9 @@
                         panelA.classList.add('dimmed');
                     }
                 }
+
+                // Кнопка блокировки альбомного режима
+                btnLandscape.classList.toggle('landscape-active', state.landscapeLocked);
             }
 
             function applySettingsToUI() {
@@ -740,9 +672,6 @@
                 inputColorA.value = state.colorA;
                 inputNameB.value = state.nameB;
                 inputColorB.value = state.colorB;
-                // Сбрасываем флаги ручного редактирования, чтобы при открытии настроек автосвязь снова работала
-                state.userEditedNameA = false;
-                state.userEditedNameB = false;
                 modalOverlay.classList.add('open');
             }
 
@@ -763,61 +692,55 @@
                 closeSettings();
             }
 
-            // Автообновление названия при изменении цвета
-            function onColorAChange() {
-                if (!state.userEditedNameA) {
-                    const autoName = getColorName(inputColorA.value);
-                    inputNameA.value = autoName;
+            // Автообновление названий при выборе цвета
+            inputColorA.addEventListener('input', () => {
+                if (inputNameA.hasAttribute('readonly')) {
+                    inputNameA.value = getColorName(inputColorA.value);
                 }
-            }
-
-            function onColorBChange() {
-                if (!state.userEditedNameB) {
-                    const autoName = getColorName(inputColorB.value);
-                    inputNameB.value = autoName;
+            });
+            inputColorB.addEventListener('input', () => {
+                if (inputNameB.hasAttribute('readonly')) {
+                    inputNameB.value = getColorName(inputColorB.value);
                 }
-            }
+            });
 
-            // Отслеживаем ручной ввод названия
-            function onNameAInput() {
-                state.userEditedNameA = true;
-            }
-
-            function onNameBInput() {
-                state.userEditedNameB = true;
-            }
-
-            // События изменения цвета и ввода
-            inputColorA.addEventListener('input', onColorAChange);
-            inputColorB.addEventListener('input', onColorBChange);
-            inputNameA.addEventListener('input', onNameAInput);
-            inputNameB.addEventListener('input', onNameBInput);
-
-            // --- ПОЛНЫЙ ЭКРАН ---
-            function toggleFullscreen() {
-                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                    const el = document.documentElement;
-                    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+            // --- АЛЬБОМНЫЙ РЕЖИМ (блокировка ориентации) ---
+            function toggleLandscapeLock() {
+                if (!state.landscapeLocked) {
+                    // Пытаемся заблокировать landscape
+                    if (screen.orientation && screen.orientation.lock) {
+                        screen.orientation.lock('landscape').then(() => {
+                            state.landscapeLocked = true;
+                            updateUI();
+                        }).catch(err => {
+                            alert('Не удалось заблокировать альбомную ориентацию. Возможно, устройство не поддерживает эту функцию.');
+                            console.warn(err);
+                        });
+                    } else {
+                        alert('Ваше устройство не поддерживает блокировку ориентации экрана.');
+                    }
                 } else {
-                    if (document.exitFullscreen) document.exitFullscreen();
-                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                    // Разблокируем
+                    if (screen.orientation && screen.orientation.unlock) {
+                        screen.orientation.unlock();
+                        state.landscapeLocked = false;
+                        updateUI();
+                    }
                 }
             }
 
-            // --- СОБЫТИЯ КНОПОК ---
-            panelA.addEventListener('click', (e) => { e.preventDefault();
-                capture('A'); });
-            panelA.addEventListener('touchend', (e) => { e.preventDefault();
-                capture('A'); });
-            panelB.addEventListener('click', (e) => { e.preventDefault();
-                capture('B'); });
-            panelB.addEventListener('touchend', (e) => { e.preventDefault();
-                capture('B'); });
+            // --- ПОЛНЫЙ ЭКРАН (оставим на всякий случай, но кнопки нет) ---
+            // Не используется, но метод оставлен на будущее
+
+            // --- СОБЫТИЯ ---
+            panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
+            panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
+            panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
+            panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
 
             btnPlayPause.addEventListener('click', toggleMatch);
             btnReset.addEventListener('click', resetMatch);
-            btnFullscreen.addEventListener('click', toggleFullscreen);
+            btnLandscape.addEventListener('click', toggleLandscapeLock);
             btnSettings.addEventListener('click', openSettings);
             btnEndGame.addEventListener('click', finishGame);
             btnSaveSettings.addEventListener('click', saveSettings);
@@ -828,39 +751,23 @@
             window.addEventListener('keydown', (e) => {
                 if (e.target.tagName === 'INPUT') return;
                 switch (e.key.toLowerCase()) {
-                    case 'a':
-                        capture('A');
-                        e.preventDefault();
-                        break;
-                    case 'b':
-                        capture('B');
-                        e.preventDefault();
-                        break;
-                    case ' ':
-                        toggleMatch();
-                        e.preventDefault();
-                        break;
-                    case 'r':
-                        resetMatch();
-                        e.preventDefault();
-                        break;
-                    case 'f':
-                        toggleFullscreen();
-                        e.preventDefault();
-                        break;
-                    case 's':
-                        openSettings();
-                        e.preventDefault();
-                        break;
-                    case 'escape':
-                        closeSettings();
-                        break;
+                    case 'a': capture('A'); e.preventDefault(); break;
+                    case 'b': capture('B'); e.preventDefault(); break;
+                    case ' ': toggleMatch(); e.preventDefault(); break;
+                    case 'r': resetMatch(); e.preventDefault(); break;
+                    case 'l': toggleLandscapeLock(); e.preventDefault(); break;
+                    case 's': openSettings(); e.preventDefault(); break;
+                    case 'escape': closeSettings(); break;
                 }
             });
 
             // Инициализация
             applySettingsToUI();
             resetMatch();
+
+            // Первичное заполнение названий при загрузке, если цвета уже стоят
+            inputNameA.value = getColorName(inputColorA.value);
+            inputNameB.value = getColorName(inputColorB.value);
         })();
     </script>
 </body>
