@@ -188,7 +188,7 @@
             50% { box-shadow: 0 0 70px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.15); }
         }
 
-        /* Кнопка разблокировки звука */
+        /* Оверлей разблокировки звука – теперь весь экран кликабелен */
         .unlock-overlay {
             position: fixed;
             inset: 0;
@@ -202,23 +202,17 @@
             opacity: 1;
             pointer-events: auto;
             transition: opacity 0.4s;
+            cursor: pointer;
         }
         .unlock-overlay.hidden {
             opacity: 0;
             pointer-events: none;
         }
-        .unlock-btn {
-            padding: 14px 30px;
-            border-radius: 40px;
-            border: none;
-            font-weight: 700;
-            font-size: 1.2rem;
-            letter-spacing: 1px;
-            cursor: pointer;
-            text-transform: uppercase;
-            background: var(--gold);
-            color: #000;
-            border: 2px solid var(--gold);
+        .unlock-text {
+            font-size: 2rem;
+            text-align: center;
+            padding: 20px;
+            pointer-events: none; /* чтобы клик шёл именно на оверлей */
         }
 
         .modal-overlay {
@@ -299,10 +293,9 @@
     </style>
 </head>
 <body>
-    <!-- Оверлей разблокировки звука -->
+    <!-- Оверлей разблокировки звука (кликабельный) -->
     <div class="unlock-overlay" id="unlockOverlay">
-        <div style="font-size:2rem; text-align:center;">🔊 Нажмите, чтобы включить звук</div>
-        <button class="unlock-btn" id="unlockBtn">ВКЛЮЧИТЬ ЗВУК</button>
+        <div class="unlock-text">🔊 Нажмите в любом месте, чтобы включить звук</div>
     </div>
 
     <div class="topbar">
@@ -398,7 +391,6 @@
             const btnSaveSettings = document.getElementById('btnSaveSettings');
             const btnCloseSettings = document.getElementById('btnCloseSettings');
             const unlockOverlay = document.getElementById('unlockOverlay');
-            const unlockBtn = document.getElementById('unlockBtn');
 
             // Состояние
             const state = {
@@ -414,6 +406,7 @@
                 sirenInterval: null,
                 sirenOsc: null,
                 sirenGain: null,
+                fileSiren: null,
                 audioUnlocked: false,
                 warningPlayed: false,
                 prevTimeLeft: null,
@@ -424,17 +417,10 @@
                 colorB: '#0066ff',
             };
 
-            // --- ЗВУКИ ---
-            function getAudioContext() {
-                if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
-                return state.audioCtx;
-            }
-
+            // Разблокировка звука – теперь по клику на весь оверлей
             function unlockAudio() {
                 if (state.audioUnlocked) return;
                 getAudioContext();
-                // Создаём пустой звук для разблокировки HTMLAudioElement
                 const silent = new Audio();
                 silent.play().then(() => {
                     silent.pause();
@@ -442,14 +428,25 @@
                     console.log('Аудио разблокировано');
                     unlockOverlay.classList.add('hidden');
                 }).catch(e => {
-                    // Если не удалось, всё равно показываем кнопку
-                    console.warn('Ошибка разблокировки аудио:', e);
+                    // Всё равно считаем разблокированным, чтобы не зависнуть
+                    state.audioUnlocked = true;
+                    unlockOverlay.classList.add('hidden');
+                    console.warn('Ошибка разблокировки, но продолжаем:', e);
                 });
             }
 
-            unlockBtn.addEventListener('click', () => {
+            unlockOverlay.addEventListener('click', unlockAudio);
+            unlockOverlay.addEventListener('touchend', (e) => {
+                e.preventDefault();
                 unlockAudio();
             });
+
+            // Обычные звуки
+            function getAudioContext() {
+                if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+                return state.audioCtx;
+            }
 
             function playTick() {
                 if (!state.audioUnlocked) return;
@@ -468,7 +465,6 @@
                 } catch (e) {}
             }
 
-            // Встроенная сирена (синтезированная, как запасной вариант)
             function stopBuiltinSiren() {
                 if (state.sirenInterval) {
                     clearInterval(state.sirenInterval);
@@ -506,33 +502,13 @@
                 }, 400);
             }
 
-            // Попытка загрузить аудиофайлы, если не получится – синтез
-            function playFileOrFallback(fileName, fallbackFunction, loop = false) {
-                if (!state.audioUnlocked) {
-                    // если звук не разблокирован, всё равно ничего не выйдет
-                    return;
-                }
-                const audio = new Audio(fileName);
-                audio.loop = loop;
-                audio.volume = 1.0;
-                audio.play().then(() => {
-                    console.log(`Файл ${fileName} воспроизводится`);
-                }).catch(e => {
-                    console.warn(`Не удалось загрузить ${fileName}, использую встроенный звук`);
-                    fallbackFunction();
-                });
-                return audio;
-            }
-
             function startSiren() {
                 if (!state.audioUnlocked) return;
-                // Останавливаем любую предыдущую
                 stopBuiltinSiren();
                 if (state.fileSiren) {
                     state.fileSiren.pause();
                     state.fileSiren = null;
                 }
-                // Пробуем файл, при ошибке – синтезированная
                 const audio = new Audio('siren.mp3');
                 audio.loop = true;
                 audio.volume = 1.0;
@@ -568,15 +544,11 @@
                     console.log('Предупреждение из файла');
                     audio.addEventListener('ended', onEnd);
                 }).catch(() => {
-                    console.log('Файл siren1.mp3 недоступен, играю встроенное предупреждение');
-                    // Встроенное предупреждение: три коротких гудка
+                    console.log('Файл siren1.mp3 недоступен, играю встроенное');
                     const ctx = getAudioContext();
                     let count = 0;
                     const beep = () => {
-                        if (count >= 3) {
-                            onEnd();
-                            return;
-                        }
+                        if (count >= 3) { onEnd(); return; }
                         count++;
                         const osc = ctx.createOscillator();
                         const gain = ctx.createGain();
@@ -715,7 +687,6 @@
             function startMatch() {
                 if (state.ended) resetMatch();
                 if (!state.audioUnlocked) {
-                    // Если звук не разблокирован, показываем оверлей
                     unlockOverlay.classList.remove('hidden');
                     return;
                 }
@@ -782,7 +753,6 @@
                 const prev = state.timeLeft;
                 state.timeLeft -= delta;
 
-                // Проверка перехода через 5 минут
                 if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
                     playWarning();
                 }
@@ -800,7 +770,6 @@
                 updateUI();
             }
 
-            // Настройки
             function openSettings() {
                 inputMatchMin.value = Math.round(state.matchDuration / 60);
                 inputNameA.value = state.nameA;
@@ -856,7 +825,6 @@
             inputNameA.value = getColorName(inputColorA.value);
             inputNameB.value = getColorName(inputColorB.value);
 
-            // Показываем оверлей разблокировки при загрузке, если звук ещё не разрешён
             if (!state.audioUnlocked) {
                 unlockOverlay.classList.remove('hidden');
             }
