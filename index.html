@@ -10,9 +10,9 @@
             --color-team-b: #1d3557;
             --bg: #0a0a10;
             --surface: #1a1a26;
-            --text: #f0f0f0;
+            --text: #ffffff;
             --gold: #f4a261;
-            --radius: 28px;
+            --radius: 20px;
             --transition: 0.2s ease;
         }
 
@@ -39,7 +39,7 @@
             touch-action: manipulation;
         }
 
-        /* Верхняя панель управления */
+        /* ВЕРХНЯЯ ПАНЕЛЬ */
         .topbar {
             display: flex;
             align-items: center;
@@ -47,12 +47,11 @@
             gap: 10px;
             padding: 10px 16px;
             background: var(--surface);
-            border-bottom: 2px solid rgba(255,255,255,0.08);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.08);
             flex-shrink: 0;
             flex-wrap: wrap;
             z-index: 10;
         }
-
         .game-timer-box {
             display: flex;
             align-items: center;
@@ -74,18 +73,17 @@
             font-size: 2rem;
             font-weight: 700;
             color: #fff;
-            text-shadow: 0 0 12px rgba(255,255,255,0.3);
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
             min-width: 100px;
             text-align: center;
         }
         .game-timer-display.warning {
             color: #e76f51;
-            animation: pulse 0.7s infinite;
+            animation: pulse-warn 0.7s infinite;
         }
-
         .btn-icon {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: #fff;
             font-size: 1.5rem;
             width: 46px;
@@ -98,18 +96,31 @@
             transition: var(--transition);
             backdrop-filter: blur(4px);
         }
-        .btn-icon:hover { background: rgba(255,255,255,0.2); }
-        .btn-icon:active { transform: scale(0.92); background: rgba(255,255,255,0.3); }
-        .btn-icon.active { background: var(--gold); border-color: var(--gold); color: #000; }
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .btn-icon:active {
+            transform: scale(0.92);
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .btn-icon.active {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: #000;
+        }
 
+        /* АРЕНА – ГОРИЗОНТАЛЬНЫЕ КНОПКИ */
         .main-arena {
             flex: 1;
             display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
             gap: 2px;
             padding: 4px;
             min-height: 0;
         }
 
+        /* ПАНЕЛЬ КОМАНДЫ */
         .team-panel {
             flex: 1;
             display: flex;
@@ -119,46 +130,94 @@
             border-radius: var(--radius);
             cursor: pointer;
             transition: var(--transition);
-            border: 4px solid rgba(255,255,255,0.2);
+            border: 4px solid rgba(255, 255, 255, 0.25);
             position: relative;
             overflow: hidden;
-            box-shadow: inset 0 0 60px rgba(0,0,0,0.6);
+            box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.6);
+            background-color: var(--color-team-a); /* будет переопределено JS */
         }
         .team-panel:active {
             transform: scale(0.97);
-            filter: brightness(1.3);
         }
 
+        /* Затемняющий слой (неактивная панель) */
+        .dim-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1;
+        }
+        .team-panel.dimmed .dim-overlay {
+            opacity: 1;
+        }
+
+        /* Контент панели всегда поверх overlay */
+        .team-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            text-align: center;
+            padding: 10px;
+        }
+
+        /* Стили текста – мощная тень для читаемости на любом фоне */
         .team-name {
-            font-size: clamp(1.4rem, 4vw, 2.4rem);
+            font-size: clamp(1.6rem, 4vw, 2.6rem);
             font-weight: 800;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
             text-transform: uppercase;
-            text-shadow: 0 4px 20px rgba(0,0,0,0.7);
-            margin-bottom: 10px;
+            color: #ffffff;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.8);
         }
         .team-time {
             font-family: 'JetBrains Mono', monospace;
-            font-size: clamp(3.5rem, 14vw, 8rem);
+            font-size: clamp(3.8rem, 15vw, 9rem);
             font-weight: 900;
-            text-shadow: 0 0 40px currentColor;
+            color: #ffffff;
+            text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.9), 0 0 35px rgba(0, 0, 0, 0.7);
             line-height: 1;
         }
         .team-status {
-            margin-top: 10px;
-            font-size: 1rem;
-            font-weight: 600;
-            background: rgba(0,0,0,0.5);
-            padding: 4px 20px;
-            border-radius: 30px;
-            letter-spacing: 1px;
+            font-size: clamp(1rem, 2.5vw, 1.6rem);
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 8px 22px;
+            border-radius: 40px;
+            color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            margin-top: 5px;
+            transition: 0.2s;
         }
 
-        /* Модальное окно настроек */
+        /* Анимация активной панели */
+        .team-panel.active-holder {
+            animation: activeGlow 1.2s infinite;
+            border-color: rgba(255, 255, 255, 0.7);
+        }
+        @keyframes activeGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 60px rgba(255, 255, 255, 0.7), inset 0 0 60px rgba(0, 0, 0, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 120px rgba(255, 255, 255, 0.9), inset 0 0 100px rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        /* МОДАЛЬНОЕ ОКНО */
         .modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(8px);
             z-index: 100;
             display: flex;
@@ -174,7 +233,7 @@
         }
         .modal {
             background: var(--surface);
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 24px;
             padding: 28px 24px;
             max-width: 480px;
@@ -204,21 +263,22 @@
         .setting-row input[type="number"],
         .setting-row input[type="text"] {
             background: #0f0f17;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: #fff;
             padding: 10px 12px;
             border-radius: 16px;
             font-size: 1.1rem;
             font-weight: 700;
             text-align: center;
-            width: 100px;
+            width: 110px;
         }
         .setting-row input[type="color"] {
-            width: 50px;
-            height: 40px;
+            width: 55px;
+            height: 42px;
             border: none;
             background: transparent;
             cursor: pointer;
+            border-radius: 8px;
         }
         .modal-actions {
             display: flex;
@@ -236,23 +296,46 @@
             cursor: pointer;
             transition: var(--transition);
             text-transform: uppercase;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
-        .btn:hover { background: rgba(255,255,255,0.2); }
-        .btn.primary { background: var(--gold); color: #000; border-color: var(--gold); }
-        .btn.danger { background: #e63946; border-color: #e63946; }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .btn.primary {
+            background: var(--gold);
+            color: #000;
+            border-color: var(--gold);
+        }
+        .btn.danger {
+            background: #e63946;
+            border-color: #e63946;
+        }
 
-        @keyframes pulse {
-            0%,100% { opacity: 1; }
-            50% { opacity: 0.4; }
+        @keyframes pulse-warn {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
         }
 
         @media (max-width: 600px) {
-            .topbar { padding: 8px 8px; gap: 6px; }
-            .game-timer-display { font-size: 1.6rem; }
-            .btn-icon { width: 38px; height: 38px; font-size: 1.3rem; }
+            .topbar {
+                padding: 8px 8px;
+                gap: 6px;
+            }
+            .game-timer-display {
+                font-size: 1.6rem;
+            }
+            .btn-icon {
+                width: 38px;
+                height: 38px;
+                font-size: 1.3rem;
+            }
         }
     </style>
 </head>
@@ -270,15 +353,23 @@
     </div>
 
     <div class="main-arena" id="arena">
+        <!-- Команда A -->
         <div class="team-panel" id="panelA">
-            <div class="team-name" id="nameA">Красные</div>
-            <div class="team-time" id="timeA">00:00</div>
-            <div class="team-status" id="statusA"></div>
+            <div class="dim-overlay"></div>
+            <div class="team-content">
+                <div class="team-name" id="nameA">КРАСНЫЕ</div>
+                <div class="team-time" id="timeA">00:00</div>
+                <div class="team-status" id="statusA">НАЖМИТЕ ДЛЯ ЗАХВАТА</div>
+            </div>
         </div>
+        <!-- Команда B -->
         <div class="team-panel" id="panelB">
-            <div class="team-name" id="nameB">Синие</div>
-            <div class="team-time" id="timeB">00:00</div>
-            <div class="team-status" id="statusB"></div>
+            <div class="dim-overlay"></div>
+            <div class="team-content">
+                <div class="team-name" id="nameB">СИНИЕ</div>
+                <div class="team-time" id="timeB">00:00</div>
+                <div class="team-status" id="statusB">НАЖМИТЕ ДЛЯ ЗАХВАТА</div>
+            </div>
         </div>
     </div>
 
@@ -292,7 +383,7 @@
             </div>
             <div class="setting-row">
                 <label>🔴 Название команды A</label>
-                <input type="text" id="inputNameA" value="Красные" maxlength="12">
+                <input type="text" id="inputNameA" value="КРАСНЫЕ" maxlength="12">
             </div>
             <div class="setting-row">
                 <label>🎨 Цвет кнопки A</label>
@@ -300,7 +391,7 @@
             </div>
             <div class="setting-row">
                 <label>🔵 Название команды B</label>
-                <input type="text" id="inputNameB" value="Синие" maxlength="12">
+                <input type="text" id="inputNameB" value="СИНИЕ" maxlength="12">
             </div>
             <div class="setting-row">
                 <label>🎨 Цвет кнопки B</label>
@@ -315,7 +406,7 @@
 
     <script>
         (function() {
-            // DOM элементы
+            // DOM
             const gameTimerDisplay = document.getElementById('gameTimerDisplay');
             const panelA = document.getElementById('panelA');
             const panelB = document.getElementById('panelB');
@@ -341,11 +432,11 @@
 
             // Состояние
             const state = {
-                matchDuration: 10 * 60, // секунды
+                matchDuration: 10 * 60,
                 timeLeft: 10 * 60,
                 active: false,
-                ended: false, // true когда время вышло, но сирена ещё звучит
-                currentHolder: null, // 'A' или 'B'
+                ended: false,
+                currentHolder: null, // 'A' | 'B' | null
                 timeA: 0,
                 timeB: 0,
                 lastTick: null,
@@ -355,16 +446,16 @@
                 sirenGain: null,
                 audioCtx: null,
                 // Настройки
-                nameA: 'Красные',
-                nameB: 'Синие',
+                nameA: 'КРАСНЫЕ',
+                nameB: 'СИНИЕ',
                 colorA: '#e63946',
                 colorB: '#1d3557',
             };
 
-            // --- ЗВУКИ ---
+            // --- ЗВУК ---
             function getAudioContext() {
                 if (!state.audioCtx) {
-                    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    state.audioCtx = new(window.AudioContext || window.webkitAudioContext)();
                 }
                 if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
                 return state.audioCtx;
@@ -384,7 +475,7 @@
                     gain.connect(ctx.destination);
                     osc.start(now);
                     osc.stop(now + 0.08);
-                } catch(e) {}
+                } catch (e) {}
             }
 
             function stopSiren() {
@@ -393,7 +484,7 @@
                     state.sirenInterval = null;
                 }
                 if (state.sirenOsc) {
-                    try { state.sirenOsc.stop(); } catch(e) {}
+                    try { state.sirenOsc.stop(); } catch (e) {}
                     state.sirenOsc = null;
                 }
                 if (state.sirenGain) {
@@ -423,12 +514,13 @@
                 }, 400);
             }
 
-            // --- ТИК-ТАК ВО ВРЕМЯ УДЕРЖАНИЯ ---
+            // Тикающий звук при удержании
             let tickTimer = null;
+
             function startTickSound() {
-                if (tickTimer) clearInterval(tickTimer);
+                stopTickSound();
                 if (state.active && state.currentHolder !== null) {
-                    playTick(); // сразу при захвате
+                    playTick();
                     tickTimer = setInterval(() => {
                         if (state.active && state.currentHolder !== null) {
                             playTick();
@@ -438,6 +530,7 @@
                     }, 1000);
                 }
             }
+
             function stopTickSound() {
                 if (tickTimer) {
                     clearInterval(tickTimer);
@@ -445,49 +538,62 @@
                 }
             }
 
-            // --- ФОРМАТ ВРЕМЕНИ ---
+            // --- ФОРМАТ ---
             function formatTime(sec) {
                 const m = Math.floor(sec / 60);
                 const s = Math.floor(sec % 60);
                 return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
             }
 
-            // --- ОБНОВЛЕНИЕ UI ---
+            // --- UI ОБНОВЛЕНИЕ ---
             function updateUI() {
-                // Таймер матча
+                // Глобальный таймер
                 gameTimerDisplay.textContent = formatTime(state.timeLeft);
-                if (state.active && state.timeLeft <= 60 && state.timeLeft > 0) {
-                    gameTimerDisplay.classList.add('warning');
-                } else {
-                    gameTimerDisplay.classList.remove('warning');
-                }
+                gameTimerDisplay.classList.toggle('warning', state.active && state.timeLeft <= 60 && state.timeLeft > 0);
 
                 // Времена команд
                 timeAEl.textContent = formatTime(state.timeA);
                 timeBEl.textContent = formatTime(state.timeB);
 
-                // Статусы
-                if (state.ended) {
+                // Кто удерживает
+                const holder = state.currentHolder;
+                const isEnded = state.ended;
+
+                if (isEnded) {
                     statusAEl.textContent = state.timeA > state.timeB ? '🏆 ПОБЕДИТЕЛЬ' : '';
                     statusBEl.textContent = state.timeB > state.timeA ? '🏆 ПОБЕДИТЕЛЬ' : '';
-                } else if (state.currentHolder === 'A') {
-                    statusAEl.textContent = '⚡ ЗАХВАТ';
-                    statusBEl.textContent = '';
-                } else if (state.currentHolder === 'B') {
-                    statusBEl.textContent = '⚡ ЗАХВАТ';
-                    statusAEl.textContent = '';
+                } else if (holder === 'A') {
+                    statusAEl.textContent = '⚡ УДЕРЖАНИЕ';
+                    statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                } else if (holder === 'B') {
+                    statusBEl.textContent = '⚡ УДЕРЖАНИЕ';
+                    statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
                 } else {
-                    statusAEl.textContent = '';
-                    statusBEl.textContent = '';
+                    statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                    statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
                 }
 
                 // Кнопка play/pause
                 btnPlayPause.textContent = state.active ? '⏸' : '▶';
-                if (state.active) btnPlayPause.classList.add('active');
-                else btnPlayPause.classList.remove('active');
+                btnPlayPause.classList.toggle('active', state.active);
 
-                // Кнопка завершения игры (сирена)
+                // Показываем кнопку завершения игры только когда время вышло
                 btnEndGame.style.display = state.ended ? 'flex' : 'none';
+
+                // Подсветка / затемнение панелей
+                panelA.classList.remove('active-holder', 'dimmed');
+                panelB.classList.remove('active-holder', 'dimmed');
+
+                if (!isEnded) {
+                    if (holder === 'A') {
+                        panelA.classList.add('active-holder');
+                        panelB.classList.add('dimmed');
+                    } else if (holder === 'B') {
+                        panelB.classList.add('active-holder');
+                        panelA.classList.add('dimmed');
+                    }
+                    // Если никто не держит – обе без диммера и свечения
+                }
             }
 
             function applySettingsToUI() {
@@ -502,15 +608,14 @@
 
             // --- ЗАХВАТ ТОЧКИ ---
             function capture(team) {
-                if (state.ended) return; // игра завершена, сирена визжит, захват невозможен
+                if (state.ended) return;
                 if (!state.active) {
-                    // Если игра не запущена, запускаем при первом захвате
                     startMatch();
                 }
-                if (state.currentHolder === team) return; // уже держит
+                if (state.currentHolder === team) return;
                 state.currentHolder = team;
                 startTickSound();
-                // Дополнительный звук захвата (короткий)
+                // Звук захвата
                 try {
                     const ctx = getAudioContext();
                     const o = ctx.createOscillator();
@@ -519,24 +624,24 @@
                     o.frequency.setValueAtTime(team === 'A' ? 800 : 600, ctx.currentTime);
                     g.gain.setValueAtTime(0.6, ctx.currentTime);
                     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-                    o.connect(g); g.connect(ctx.destination);
-                    o.start(); o.stop(ctx.currentTime + 0.22);
-                } catch(e) {}
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start();
+                    o.stop(ctx.currentTime + 0.22);
+                } catch (e) {}
                 updateUI();
             }
 
             // --- УПРАВЛЕНИЕ МАТЧЕМ ---
             function startMatch() {
-                if (state.ended) {
-                    resetMatch();
-                }
+                if (state.ended) resetMatch();
                 state.active = true;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) {
                     state.tickInterval = setInterval(gameTick, 100);
                 }
                 updateUI();
-                if (state.currentHolder !== null) startTickSound();
+                if (state.currentHolder) startTickSound();
             }
 
             function pauseMatch() {
@@ -548,8 +653,7 @@
 
             function toggleMatch() {
                 if (state.ended) return;
-                if (state.active) pauseMatch();
-                else startMatch();
+                state.active ? pauseMatch() : startMatch();
             }
 
             function resetMatch() {
@@ -580,17 +684,13 @@
             }
 
             function finishGame() {
-                // Нажата кнопка "Завершить игру"
                 stopSiren();
-                state.ended = false; // полностью завершаем
-                // Оставляем время команд на экране, матч не активен
+                state.ended = false;
+                state.currentHolder = null;
                 updateUI();
                 btnEndGame.style.display = 'none';
-                // Можно сбросить currentHolder для чистоты
-                state.currentHolder = null;
             }
 
-            // Главный тик (каждые 100 мс)
             function gameTick() {
                 const now = Date.now();
                 if (!state.active || !state.lastTick) {
@@ -599,8 +699,6 @@
                 }
                 const delta = (now - state.lastTick) / 1000;
                 if (delta <= 0) return;
-
-                // Уменьшаем время матча
                 state.timeLeft -= delta;
                 if (state.timeLeft <= 0) {
                     state.timeLeft = 0;
@@ -608,14 +706,8 @@
                     endMatchByTimer();
                     return;
                 }
-
-                // Начисляем время удержания
-                if (state.currentHolder === 'A') {
-                    state.timeA += delta;
-                } else if (state.currentHolder === 'B') {
-                    state.timeB += delta;
-                }
-
+                if (state.currentHolder === 'A') state.timeA += delta;
+                else if (state.currentHolder === 'B') state.timeB += delta;
                 state.lastTick = now;
                 updateUI();
             }
@@ -629,19 +721,21 @@
                 inputColorB.value = state.colorB;
                 modalOverlay.classList.add('open');
             }
+
             function closeSettings() {
                 modalOverlay.classList.remove('open');
             }
+
             function saveSettings() {
                 let mins = parseInt(inputMatchMin.value, 10);
                 if (isNaN(mins) || mins < 1) mins = 10;
                 state.matchDuration = mins * 60;
-                state.nameA = inputNameA.value.trim() || 'Команда A';
-                state.nameB = inputNameB.value.trim() || 'Команда B';
+                state.nameA = inputNameA.value.trim() || 'КОМАНДА A';
+                state.nameB = inputNameB.value.trim() || 'КОМАНДА B';
                 state.colorA = inputColorA.value;
                 state.colorB = inputColorB.value;
                 applySettingsToUI();
-                resetMatch(); // сбросить матч при изменении настроек
+                resetMatch();
                 closeSettings();
             }
 
@@ -649,7 +743,7 @@
             function toggleFullscreen() {
                 if (!document.fullscreenElement && !document.webkitFullscreenElement) {
                     const el = document.documentElement;
-                    if (el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+                    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
                     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
                 } else {
                     if (document.exitFullscreen) document.exitFullscreen();
@@ -658,10 +752,14 @@
             }
 
             // --- СОБЫТИЯ ---
-            panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
-            panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
-            panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
-            panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
+            panelA.addEventListener('click', (e) => { e.preventDefault();
+                capture('A'); });
+            panelA.addEventListener('touchend', (e) => { e.preventDefault();
+                capture('A'); });
+            panelB.addEventListener('click', (e) => { e.preventDefault();
+                capture('B'); });
+            panelB.addEventListener('touchend', (e) => { e.preventDefault();
+                capture('B'); });
 
             btnPlayPause.addEventListener('click', toggleMatch);
             btnReset.addEventListener('click', resetMatch);
@@ -676,13 +774,33 @@
             window.addEventListener('keydown', (e) => {
                 if (e.target.tagName === 'INPUT') return;
                 switch (e.key.toLowerCase()) {
-                    case 'a': capture('A'); e.preventDefault(); break;
-                    case 'b': capture('B'); e.preventDefault(); break;
-                    case ' ': toggleMatch(); e.preventDefault(); break;
-                    case 'r': resetMatch(); e.preventDefault(); break;
-                    case 'f': toggleFullscreen(); e.preventDefault(); break;
-                    case 's': openSettings(); e.preventDefault(); break;
-                    case 'escape': closeSettings(); break;
+                    case 'a':
+                        capture('A');
+                        e.preventDefault();
+                        break;
+                    case 'b':
+                        capture('B');
+                        e.preventDefault();
+                        break;
+                    case ' ':
+                        toggleMatch();
+                        e.preventDefault();
+                        break;
+                    case 'r':
+                        resetMatch();
+                        e.preventDefault();
+                        break;
+                    case 'f':
+                        toggleFullscreen();
+                        e.preventDefault();
+                        break;
+                    case 's':
+                        openSettings();
+                        e.preventDefault();
+                        break;
+                    case 'escape':
+                        closeSettings();
+                        break;
                 }
             });
 
