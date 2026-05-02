@@ -187,34 +187,6 @@
             0%,100% { box-shadow: 0 0 40px rgba(255,255,255,0.6), inset 0 0 40px rgba(0,0,0,0.4); }
             50% { box-shadow: 0 0 70px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.15); }
         }
-
-        /* Оверлей разблокировки звука – теперь весь экран кликабелен */
-        .unlock-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.9);
-            z-index: 200;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            opacity: 1;
-            pointer-events: auto;
-            transition: opacity 0.4s;
-            cursor: pointer;
-        }
-        .unlock-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .unlock-text {
-            font-size: 2rem;
-            text-align: center;
-            padding: 20px;
-            pointer-events: none; /* чтобы клик шёл именно на оверлей */
-        }
-
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -293,11 +265,6 @@
     </style>
 </head>
 <body>
-    <!-- Оверлей разблокировки звука (кликабельный) -->
-    <div class="unlock-overlay" id="unlockOverlay">
-        <div class="unlock-text">🔊 Нажмите в любом месте, чтобы включить звук</div>
-    </div>
-
     <div class="topbar">
         <div class="game-timer-box">
             <span class="game-timer-label">⏱ МАТЧ</span>
@@ -390,7 +357,6 @@
             const inputColorB = document.getElementById('inputColorB');
             const btnSaveSettings = document.getElementById('btnSaveSettings');
             const btnCloseSettings = document.getElementById('btnCloseSettings');
-            const unlockOverlay = document.getElementById('unlockOverlay');
 
             // Состояние
             const state = {
@@ -406,45 +372,25 @@
                 sirenInterval: null,
                 sirenOsc: null,
                 sirenGain: null,
-                fileSiren: null,
-                audioUnlocked: false,
+                audioCtx: null,
+                audioUnlocked: false,   // разблокируется при первом старте
                 warningPlayed: false,
                 prevTimeLeft: null,
-                audioCtx: null,
                 nameA: 'КРАСНЫЕ',
                 nameB: 'СИНИЕ',
                 colorA: '#e63946',
                 colorB: '#0066ff',
             };
 
-            // Разблокировка звука – теперь по клику на весь оверлей
-            function unlockAudio() {
-                if (state.audioUnlocked) return;
-                getAudioContext();
-                const silent = new Audio();
-                silent.play().then(() => {
-                    silent.pause();
-                    state.audioUnlocked = true;
-                    console.log('Аудио разблокировано');
-                    unlockOverlay.classList.add('hidden');
-                }).catch(e => {
-                    // Всё равно считаем разблокированным, чтобы не зависнуть
-                    state.audioUnlocked = true;
-                    unlockOverlay.classList.add('hidden');
-                    console.warn('Ошибка разблокировки, но продолжаем:', e);
-                });
-            }
-
-            unlockOverlay.addEventListener('click', unlockAudio);
-            unlockOverlay.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                unlockAudio();
-            });
-
-            // Обычные звуки
+            // --- ЗВУКИ (встроенные, без файлов) ---
             function getAudioContext() {
-                if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+                if (!state.audioCtx) {
+                    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                // контекст может быть suspended, разблокируем по требованию
+                if (state.audioCtx.state === 'suspended') {
+                    state.audioCtx.resume();
+                }
                 return state.audioCtx;
             }
 
@@ -452,17 +398,41 @@
                 if (!state.audioUnlocked) return;
                 try {
                     const ctx = getAudioContext();
+                    const now = ctx.currentTime;
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
                     osc.type = 'square';
-                    osc.frequency.setValueAtTime(1200, ctx.currentTime);
-                    gain.gain.setValueAtTime(1.0, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07);
+                    osc.frequency.setValueAtTime(1200, now);
+                    gain.gain.setValueAtTime(0.7, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
                     osc.connect(gain);
                     gain.connect(ctx.destination);
-                    osc.start();
-                    osc.stop(ctx.currentTime + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
                 } catch (e) {}
+            }
+
+            function startBuiltinSiren() {
+                stopBuiltinSiren();
+                if (!state.audioUnlocked) return;
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sawtooth';
+                gain.gain.setValueAtTime(0.8, now);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                state.sirenOsc = osc;
+                state.sirenGain = gain;
+
+                let freqHigh = true;
+                state.sirenInterval = setInterval(() => {
+                    if (!state.sirenOsc) return;
+                    freqHigh = !freqHigh;
+                    state.sirenOsc.frequency.setValueAtTime(freqHigh ? 900 : 600, getAudioContext().currentTime);
+                }, 400);
             }
 
             function stopBuiltinSiren() {
@@ -480,90 +450,34 @@
                 }
             }
 
-            function startBuiltinSiren() {
-                stopBuiltinSiren();
-                if (!state.audioUnlocked) return;
-                const ctx = getAudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sawtooth';
-                gain.gain.setValueAtTime(0.9, ctx.currentTime);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start();
-                state.sirenOsc = osc;
-                state.sirenGain = gain;
-
-                let freqHigh = true;
-                state.sirenInterval = setInterval(() => {
-                    if (!state.sirenOsc) return;
-                    freqHigh = !freqHigh;
-                    state.sirenOsc.frequency.setValueAtTime(freqHigh ? 900 : 600, getAudioContext().currentTime);
-                }, 400);
-            }
-
-            function startSiren() {
-                if (!state.audioUnlocked) return;
-                stopBuiltinSiren();
-                if (state.fileSiren) {
-                    state.fileSiren.pause();
-                    state.fileSiren = null;
-                }
-                const audio = new Audio('siren.mp3');
-                audio.loop = true;
-                audio.volume = 1.0;
-                audio.play().then(() => {
-                    console.log('Финальная сирена из файла');
-                    state.fileSiren = audio;
-                }).catch(() => {
-                    console.log('Файл siren.mp3 недоступен, играю встроенную');
-                    startBuiltinSiren();
-                });
-            }
-
-            function stopSiren() {
-                stopBuiltinSiren();
-                if (state.fileSiren) {
-                    state.fileSiren.pause();
-                    state.fileSiren = null;
-                }
-            }
-
             function playWarning() {
                 if (!state.audioUnlocked || state.warningPlayed || !state.matchActive) return;
                 state.warningPlayed = true;
-                stopTickSound();
+                stopTickSound(); // останавливаем тикание на время предупреждения
 
-                const onEnd = () => {
-                    if (state.matchActive && state.currentHolder !== null) startTickSound();
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                let count = 0;
+                const beep = () => {
+                    if (count >= 3) {
+                        // после трёх гудков возобновляем тикание, если игра активна и есть захват
+                        if (state.matchActive && state.currentHolder !== null) startTickSound();
+                        return;
+                    }
+                    count++;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(600, now + (count * 0.4));
+                    gain.gain.setValueAtTime(1.0, now + (count * 0.4));
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + (count * 0.4) + 0.25);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + (count * 0.4));
+                    osc.stop(now + (count * 0.4) + 0.3);
+                    setTimeout(beep, 400);
                 };
-
-                const audio = new Audio('siren1.mp3');
-                audio.volume = 1.0;
-                audio.play().then(() => {
-                    console.log('Предупреждение из файла');
-                    audio.addEventListener('ended', onEnd);
-                }).catch(() => {
-                    console.log('Файл siren1.mp3 недоступен, играю встроенное');
-                    const ctx = getAudioContext();
-                    let count = 0;
-                    const beep = () => {
-                        if (count >= 3) { onEnd(); return; }
-                        count++;
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.type = 'square';
-                        osc.frequency.setValueAtTime(600, ctx.currentTime);
-                        gain.gain.setValueAtTime(1.0, ctx.currentTime);
-                        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start(ctx.currentTime);
-                        osc.stop(ctx.currentTime + 0.25);
-                        setTimeout(beep, 400);
-                    };
-                    beep();
-                });
+                beep();
             }
 
             let tickTimer = null;
@@ -579,6 +493,22 @@
             }
             function stopTickSound() {
                 if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+            }
+
+            // Разблокировка звука при первом старте (вызывается по кнопке Play)
+            function unlockAudio() {
+                if (state.audioUnlocked) return;
+                // Создаём и тут же удаляем пустой звук в ответ на действие пользователя
+                const ctx = getAudioContext();
+                // Дополнительно создаём буфер тишины и проигрываем
+                const buffer = ctx.createBuffer(1, 1, 22050);
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(ctx.destination);
+                source.start(0);
+                source.stop(0);
+                state.audioUnlocked = true;
+                console.log('Аудио разблокировано');
             }
 
             function formatTime(sec) {
@@ -686,10 +616,8 @@
 
             function startMatch() {
                 if (state.ended) resetMatch();
-                if (!state.audioUnlocked) {
-                    unlockOverlay.classList.remove('hidden');
-                    return;
-                }
+                // Разблокируем звук прямо здесь (пользователь нажал кнопку)
+                unlockAudio();
                 state.matchActive = true;
                 state.warningPlayed = false;
                 state.prevTimeLeft = state.timeLeft;
@@ -719,7 +647,7 @@
                 state.timeA = 0; state.timeB = 0;
                 state.warningPlayed = false;
                 state.prevTimeLeft = state.timeLeft;
-                stopSiren();
+                stopBuiltinSiren();
                 stopTickSound();
                 if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
                 updateUI();
@@ -731,13 +659,13 @@
                 state.ended = true;
                 state.currentHolder = null;
                 stopTickSound();
-                startSiren();
+                startBuiltinSiren();
                 updateUI();
                 btnEndGame.style.display = 'flex';
             }
 
             function finishGame() {
-                stopSiren();
+                stopBuiltinSiren();
                 state.ended = false;
                 state.currentHolder = null;
                 updateUI();
@@ -824,10 +752,6 @@
             resetMatch();
             inputNameA.value = getColorName(inputColorA.value);
             inputNameB.value = getColorName(inputColorB.value);
-
-            if (!state.audioUnlocked) {
-                unlockOverlay.classList.remove('hidden');
-            }
         })();
     </script>
 </body>
