@@ -1,0 +1,10 @@
+{
+  "name": "Страйкбол: Захват точки",
+  "short_name": "Захват",
+  "description": "Табло удержания точки для страйкбола",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0a0a10",
+  "theme_color": "#1a1a26"
+}
