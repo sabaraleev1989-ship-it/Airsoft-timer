@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Захват точки · Страйкбол</title>
-    <link rel="manifest" href="manifest.json">
     <style>
         :root {
             --color-team-a: #e63946;
@@ -36,55 +35,13 @@
             flex-direction: column;
         }
 
-        /* Затемнение для портретного режима */
-        .portrait-block {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.95);
-            z-index: 500;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 24px;
-            text-align: center;
-            padding: 20px;
-        }
-        @media (orientation: portrait) {
-            .portrait-block {
-                display: flex;
-            }
-            .topbar, .main-arena {
-                display: none;
-            }
-        }
-
-        .portrait-block .msg {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #fff;
-        }
-        .portrait-block .btn {
-            padding: 14px 30px;
-            border-radius: 40px;
-            border: none;
-            font-weight: 700;
-            font-size: 1.2rem;
-            letter-spacing: 1px;
-            cursor: pointer;
-            text-transform: uppercase;
-            background: var(--gold);
-            color: #000;
-            border: 2px solid var(--gold);
-        }
-
-        /* Основной интерфейс (альбомный) */
+        /* Верхняя панель */
         .topbar {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            padding: 6px 10px;
+            padding: 8px 12px;
             background: var(--surface);
             border-bottom: 2px solid rgba(255,255,255,0.08);
             flex-shrink: 0;
@@ -101,7 +58,7 @@
             backdrop-filter: blur(8px);
         }
         .game-timer-label {
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             letter-spacing: 1.5px;
             color: #aaa;
             font-weight: 600;
@@ -109,11 +66,11 @@
         }
         .game-timer-display {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             font-weight: 700;
             color: #fff;
             text-shadow: 0 0 8px rgba(255,255,255,0.3);
-            min-width: 75px;
+            min-width: 80px;
             text-align: center;
         }
         .game-timer-display.warning {
@@ -124,9 +81,9 @@
             background: rgba(255,255,255,0.08);
             border: 1px solid rgba(255,255,255,0.15);
             color: #fff;
-            font-size: 1.2rem;
-            width: 38px;
-            height: 38px;
+            font-size: 1.3rem;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             cursor: pointer;
             display: flex;
@@ -138,31 +95,32 @@
         .btn-icon:hover { background: rgba(255,255,255,0.2); }
         .btn-icon:active { transform: scale(0.92); }
         .btn-icon.active { background: var(--gold); border-color: var(--gold); color: #000; }
-        .btn-icon.landscape-active { background: #2a9d8f; border-color: #2a9d8f; }
 
+        /* Основная арена – вертикально */
         .main-arena {
             flex: 1;
             display: flex;
-            flex-direction: row;
+            flex-direction: column;
             gap: 6px;
             padding: 8px;
             min-height: 0;
         }
 
+        /* Панель команды */
         .team-panel {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border-radius: 16px;
+            border-radius: 18px;
             cursor: pointer;
             transition: 0.2s;
             border: 3px solid rgba(255,255,255,0.25);
             position: relative;
             overflow: hidden;
             box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
-            min-width: 0;
+            min-height: 0;
         }
         .team-panel:active { transform: scale(0.97); }
         .team-panel.inactive-for-start {
@@ -191,35 +149,35 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             text-align: center;
-            padding: 8px;
+            padding: 12px;
             width: 100%;
         }
         .team-name {
-            font-size: clamp(1rem, 3vw, 1.8rem);
+            font-size: clamp(1.4rem, 6vw, 2.4rem);
             font-weight: 800;
             letter-spacing: 2px;
             text-transform: uppercase;
             color: #ffffff;
-            text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
             white-space: nowrap;
         }
         .team-time {
             font-family: 'JetBrains Mono', monospace;
-            font-size: clamp(2.2rem, 7vw, 4.5rem);
+            font-size: clamp(3rem, 12vw, 6rem);
             font-weight: 900;
             color: #ffffff;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.9);
             line-height: 1;
         }
         .team-status {
-            font-size: clamp(0.7rem, 1.5vw, 1rem);
+            font-size: clamp(0.9rem, 3vw, 1.3rem);
             font-weight: 700;
             letter-spacing: 1px;
             background: rgba(0,0,0,0.6);
-            padding: 4px 14px;
-            border-radius: 20px;
+            padding: 6px 18px;
+            border-radius: 30px;
             color: #ffffff;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
             backdrop-filter: blur(4px);
@@ -318,13 +276,6 @@
     </style>
 </head>
 <body>
-    <!-- Блок при портретной ориентации -->
-    <div class="portrait-block" id="portraitBlock">
-        <div class="msg">📱 Поверните устройство<br>в альбомный режим</div>
-        <button class="btn" id="btnForceLandscape">🔄 Альбомный режим</button>
-    </div>
-
-    <!-- Основной интерфейс -->
     <div class="topbar">
         <div class="game-timer-box">
             <span class="game-timer-label">⏱ МАТЧ</span>
@@ -332,7 +283,6 @@
         </div>
         <button class="btn-icon" id="btnPlayPause" title="Старт / Пауза">▶</button>
         <button class="btn-icon" id="btnReset" title="Сбросить матч">↺</button>
-        <button class="btn-icon" id="btnLandscape" title="Заблокировать альбомную ориентацию">🔄</button>
         <button class="btn-icon" id="btnSettings" title="Настройки">⚙️</button>
         <button class="btn-icon" id="btnEndGame" title="Завершить игру (остановить сирену)" style="display:none; background:#e76f51;">🔔</button>
     </div>
@@ -400,7 +350,6 @@
             const statusBEl = document.getElementById('statusB');
             const btnPlayPause = document.getElementById('btnPlayPause');
             const btnReset = document.getElementById('btnReset');
-            const btnLandscape = document.getElementById('btnLandscape');
             const btnSettings = document.getElementById('btnSettings');
             const btnEndGame = document.getElementById('btnEndGame');
             const modalOverlay = document.getElementById('modalOverlay');
@@ -411,14 +360,12 @@
             const inputColorB = document.getElementById('inputColorB');
             const btnSaveSettings = document.getElementById('btnSaveSettings');
             const btnCloseSettings = document.getElementById('btnCloseSettings');
-            const portraitBlock = document.getElementById('portraitBlock');
-            const btnForceLandscape = document.getElementById('btnForceLandscape');
 
             // Состояние
             const state = {
                 matchDuration: 10 * 60,
                 timeLeft: 10 * 60,
-                matchActive: false,          // игра запущена (после нажатия Play)
+                matchActive: false,          // игра запущена
                 ended: false,
                 currentHolder: null,
                 timeA: 0,
@@ -433,7 +380,6 @@
                 nameB: 'СИНИЕ',
                 colorA: '#e63946',
                 colorB: '#1d3557',
-                landscapeLocked: false,
             };
 
             // --- ЗВУК ---
@@ -529,7 +475,6 @@
                 const isEnded = state.ended;
                 const gameStarted = state.matchActive;
 
-                // Статусы
                 if (!gameStarted && !isEnded) {
                     statusAEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
                     statusBEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
@@ -547,7 +492,6 @@
                     statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
                 }
 
-                // Активация/деактивация панелей
                 if (gameStarted && !isEnded) {
                     panelA.classList.remove('inactive-for-start');
                     panelB.classList.remove('inactive-for-start');
@@ -556,7 +500,6 @@
                     panelB.classList.add('inactive-for-start');
                 }
 
-                // Подсветка / затемнение
                 panelA.classList.remove('active-holder', 'dimmed');
                 panelB.classList.remove('active-holder', 'dimmed');
                 if (gameStarted && !isEnded) {
@@ -569,11 +512,9 @@
                     }
                 }
 
-                // Кнопки управления
                 btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
                 btnPlayPause.classList.toggle('active', state.matchActive);
                 btnEndGame.style.display = state.ended ? 'flex' : 'none';
-                btnLandscape.classList.toggle('landscape-active', state.landscapeLocked);
             }
 
             function applySettingsToUI() {
@@ -586,7 +527,6 @@
                 updateUI();
             }
 
-            // Захват точки – только если игра активна
             function capture(team) {
                 if (state.ended || !state.matchActive) return;
                 if (state.currentHolder === team) return;
@@ -699,54 +639,6 @@
             inputColorA.addEventListener('input', () => { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
             inputColorB.addEventListener('input', () => { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
 
-            // Альбомная ориентация
-            async function lockLandscape() {
-                try {
-                    if (document.fullscreenEnabled && !document.fullscreenElement) {
-                        await document.documentElement.requestFullscreen();
-                    }
-                    if (screen.orientation && screen.orientation.lock) {
-                        await screen.orientation.lock('landscape');
-                        state.landscapeLocked = true;
-                        updateUI();
-                        return true;
-                    }
-                } catch (e) {}
-                return false;
-            }
-
-            async function attemptAutoLandscape() {
-                const success = await lockLandscape();
-                if (!success) {
-                    // Показываем блок при портрете
-                    portraitBlock.style.display = 'flex';
-                } else {
-                    portraitBlock.style.display = 'none';
-                }
-            }
-
-            // Ручная блокировка по кнопке
-            btnForceLandscape.addEventListener('click', async () => {
-                await lockLandscape();
-                // После блокировки скрываем портретный блок (если стиль media portrait его скрывает)
-                portraitBlock.style.display = 'none';
-            });
-
-            btnLandscape.addEventListener('click', async () => {
-                if (state.landscapeLocked) {
-                    if (screen.orientation && screen.orientation.unlock) {
-                        screen.orientation.unlock();
-                        state.landscapeLocked = false;
-                        updateUI();
-                    }
-                } else {
-                    await lockLandscape();
-                }
-            });
-
-            // При загрузке
-            window.addEventListener('load', attemptAutoLandscape);
-
             // События кнопок команд
             panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
             panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
@@ -768,7 +660,6 @@
                     case 'b': capture('B'); e.preventDefault(); break;
                     case ' ': toggleMatch(); e.preventDefault(); break;
                     case 'r': resetMatch(); e.preventDefault(); break;
-                    case 'l': btnLandscape.click(); e.preventDefault(); break;
                     case 's': openSettings(); e.preventDefault(); break;
                     case 'escape': closeSettings(); break;
                 }
