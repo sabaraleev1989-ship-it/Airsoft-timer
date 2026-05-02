@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Захват точки · Страйкбол</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         :root {
             --color-team-a: #e63946;
@@ -35,7 +36,6 @@
             flex-direction: column;
         }
 
-        /* Верхняя панель */
         .topbar {
             display: flex;
             align-items: center;
@@ -96,7 +96,6 @@
         .btn-icon:active { transform: scale(0.92); }
         .btn-icon.active { background: var(--gold); border-color: var(--gold); color: #000; }
 
-        /* Основная арена – вертикально */
         .main-arena {
             flex: 1;
             display: flex;
@@ -106,7 +105,6 @@
             min-height: 0;
         }
 
-        /* Панель команды */
         .team-panel {
             flex: 1;
             display: flex;
@@ -127,9 +125,7 @@
             cursor: default;
             filter: grayscale(0.4);
         }
-        .team-panel.inactive-for-start:active {
-            transform: none;
-        }
+        .team-panel.inactive-for-start:active { transform: none; }
 
         .dim-overlay {
             position: absolute;
@@ -155,7 +151,6 @@
             width: 100%;
         }
 
-        /* УВЕЛИЧЕННЫЕ ШРИФТЫ ДЛЯ ЛУЧШЕЙ ВИДИМОСТИ */
         .team-name {
             font-size: clamp(1.8rem, 8vw, 3.2rem);
             font-weight: 800;
@@ -198,7 +193,6 @@
             50% { box-shadow: 0 0 80px rgba(255,255,255,0.9), inset 0 0 80px rgba(255,255,255,0.2); }
         }
 
-        /* Модальное окно */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -339,6 +333,15 @@
     </div>
 
     <script>
+        // Регистрация Service Worker для оффлайн-работы
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('SW зарегистрирован'))
+                    .catch(err => console.log('Ошибка SW:', err));
+            });
+        }
+
         (function() {
             // DOM-элементы
             const gameTimerDisplay = document.getElementById('gameTimerDisplay');
@@ -375,8 +378,8 @@
                 lastTick: null,
                 tickInterval: null,
                 sirenInterval: null,
-                sirenOsc: null,
-                sirenGain: null,
+                sirenOsc: [],
+                sirenGain: [],
                 audioCtx: null,
                 nameA: 'КРАСНЫЕ',
                 nameB: 'СИНИЕ',
@@ -406,28 +409,53 @@
                 } catch (e) {}
             }
             function stopSiren() {
-                if (state.sirenInterval) { clearInterval(state.sirenInterval); state.sirenInterval = null; }
-                if (state.sirenOsc) { try { state.sirenOsc.stop(); } catch(e) {} state.sirenOsc = null; }
-                if (state.sirenGain) { state.sirenGain.disconnect(); state.sirenGain = null; }
+                if (state.sirenInterval) {
+                    clearInterval(state.sirenInterval);
+                    state.sirenInterval = null;
+                }
+                state.sirenOsc.forEach(osc => {
+                    try { osc.stop(); } catch(e) {}
+                });
+                state.sirenOsc = [];
+                state.sirenGain.forEach(gain => gain.disconnect());
+                state.sirenGain = [];
             }
             function startSiren() {
                 stopSiren();
                 const ctx = getAudioContext();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sawtooth';
-                gain.gain.setValueAtTime(0.9, ctx.currentTime);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start();
-                state.sirenOsc = osc;
-                state.sirenGain = gain;
+                const now = ctx.currentTime;
+
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain1 = ctx.createGain();
+                const gain2 = ctx.createGain();
+
+                osc1.type = 'sawtooth';
+                osc2.type = 'square';
+
+                gain1.gain.setValueAtTime(1.2, now);
+                gain2.gain.setValueAtTime(1.0, now);
+
+                osc1.connect(gain1);
+                osc2.connect(gain2);
+                gain1.connect(ctx.destination);
+                gain2.connect(ctx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+
+                state.sirenOsc = [osc1, osc2];
+                state.sirenGain = [gain1, gain2];
+
                 let freqHigh = true;
                 state.sirenInterval = setInterval(() => {
-                    if (!state.sirenOsc) return;
+                    if (!state.sirenOsc.length) return;
                     freqHigh = !freqHigh;
-                    state.sirenOsc.frequency.setValueAtTime(freqHigh ? 900 : 600, getAudioContext().currentTime);
-                }, 400);
+                    const f1 = freqHigh ? 1100 : 350;
+                    const f2 = freqHigh ? 1400 : 500;
+                    if (osc1) osc1.frequency.setValueAtTime(f1, ctx.currentTime);
+                    if (osc2) osc2.frequency.setValueAtTime(f2, ctx.currentTime);
+                }, 250);
             }
 
             let tickTimer = null;
