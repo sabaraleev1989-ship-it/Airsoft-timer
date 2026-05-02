@@ -1,31 +1,32 @@
-const CACHE_NAME = 'strikeball-v2';
+const CACHE_NAME = 'strikeball-v3';
 const urlsToCache = [
-  'index.html',
-  'manifest.json',
-  'logo3.png'
+    'index.html',
+    'manifest.json',
+    'logo3.png',
+    'siren.mp3',
+    'siren1.mp3'
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting(); // сразу активировать новый SW
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
-  );
+    self.skipWaiting();
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(urlsToCache))
+    );
 });
 
 self.addEventListener('activate', event => {
-  // Удаляем старые кэши
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(
-      keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-    ))
-  );
-  return self.clients.claim(); // начинаем контролировать все вкладки
+    event.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+        ))
+    );
+    return self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
-  );
+    event.respondWith(
+        caches.match(event.request)
+            .then(response => response || fetch(event.request))
+    );
 });
