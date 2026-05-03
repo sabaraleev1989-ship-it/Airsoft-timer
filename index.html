@@ -369,11 +369,12 @@
                 timeB: 0,
                 lastTick: null,
                 tickInterval: null,
-                sirenInterval: null,
-                sirenOsc: null,
-                sirenGain: null,
+                // Web Audio
                 audioCtx: null,
-                audioUnlocked: false,   // разблокируется при первом старте
+                buffers: { siren: null, siren1: null },
+                activeSirenNode: null,
+                warningTimeout: null,
+                audioLoaded: false,
                 warningPlayed: false,
                 prevTimeLeft: null,
                 nameA: 'КРАСНЫЕ',
@@ -382,20 +383,91 @@
                 colorB: '#0066ff',
             };
 
-            // --- ЗВУКИ (встроенные, без файлов) ---
+            // --- Загрузка и работа с аудио ---
             function getAudioContext() {
                 if (!state.audioCtx) {
                     state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 }
-                // контекст может быть suspended, разблокируем по требованию
                 if (state.audioCtx.state === 'suspended') {
                     state.audioCtx.resume();
                 }
                 return state.audioCtx;
             }
 
+            async function loadAudioFile(url) {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+                return await getAudioContext().decodeAudioData(arrayBuffer);
+            }
+
+            async function preloadAudioFiles() {
+                if (state.audioLoaded) return;
+                try {
+                    console.log('Загружаю аудиофайлы...');
+                    state.buffers.siren = await loadAudioFile('siren.mp3');
+                    state.buffers.siren1 = await loadAudioFile('siren1.mp3');
+                    state.audioLoaded = true;
+                    console.log('Аудиофайлы загружены и декодированы');
+                } catch (err) {
+                    console.error('Не удалось загрузить аудиофайлы:', err);
+                    // Если загрузка не удалась, флаг остаётся false, звуков не будет
+                }
+            }
+
+            function playBuffer(buffer, loop = false) {
+                if (!buffer) return;
+                const ctx = getAudioContext();
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = loop;
+                source.connect(ctx.destination);
+                source.start(0);
+                return source;
+            }
+
+            // Сирена (финал) – зацикленная
+            function startSiren() {
+                stopSiren();
+                if (!state.buffers.siren) {
+                    console.warn('Буфер сирены не загружен');
+                    return;
+                }
+                state.activeSirenNode = playBuffer(state.buffers.siren, true);
+            }
+
+            function stopSiren() {
+                if (state.activeSirenNode) {
+                    try { state.activeSirenNode.stop(); } catch(e) {}
+                    state.activeSirenNode.disconnect();
+                    state.activeSirenNode = null;
+                }
+            }
+
+            // Предупреждение за 5 минут (siren1.mp3) – один раз
+            function playWarning() {
+                if (state.warningPlayed || !state.matchActive) return;
+                if (!state.buffers.siren1) {
+                    console.warn('Буфер предупреждения не загружен');
+                    return;
+                }
+                state.warningPlayed = true;
+                stopTickSound();
+
+                const source = playBuffer(state.buffers.siren1, false);
+                if (source) {
+                    source.onended = () => {
+                        // После завершения возобновляем тикание, если игра идёт и точка захвачена
+                        if (state.matchActive && state.currentHolder !== null) {
+                            startTickSound();
+                        }
+                    };
+                }
+            }
+
+            // Тикание
             function playTick() {
-                if (!state.audioUnlocked) return;
+                if (!state.audioLoaded) return;
                 try {
                     const ctx = getAudioContext();
                     const now = ctx.currentTime;
@@ -412,78 +484,10 @@
                 } catch (e) {}
             }
 
-            function startBuiltinSiren() {
-                stopBuiltinSiren();
-                if (!state.audioUnlocked) return;
-                const ctx = getAudioContext();
-                const now = ctx.currentTime;
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sawtooth';
-                gain.gain.setValueAtTime(0.8, now);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(now);
-                state.sirenOsc = osc;
-                state.sirenGain = gain;
-
-                let freqHigh = true;
-                state.sirenInterval = setInterval(() => {
-                    if (!state.sirenOsc) return;
-                    freqHigh = !freqHigh;
-                    state.sirenOsc.frequency.setValueAtTime(freqHigh ? 900 : 600, getAudioContext().currentTime);
-                }, 400);
-            }
-
-            function stopBuiltinSiren() {
-                if (state.sirenInterval) {
-                    clearInterval(state.sirenInterval);
-                    state.sirenInterval = null;
-                }
-                if (state.sirenOsc) {
-                    try { state.sirenOsc.stop(); } catch(e) {}
-                    state.sirenOsc = null;
-                }
-                if (state.sirenGain) {
-                    state.sirenGain.disconnect();
-                    state.sirenGain = null;
-                }
-            }
-
-            function playWarning() {
-                if (!state.audioUnlocked || state.warningPlayed || !state.matchActive) return;
-                state.warningPlayed = true;
-                stopTickSound(); // останавливаем тикание на время предупреждения
-
-                const ctx = getAudioContext();
-                const now = ctx.currentTime;
-                let count = 0;
-                const beep = () => {
-                    if (count >= 3) {
-                        // после трёх гудков возобновляем тикание, если игра активна и есть захват
-                        if (state.matchActive && state.currentHolder !== null) startTickSound();
-                        return;
-                    }
-                    count++;
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(600, now + (count * 0.4));
-                    gain.gain.setValueAtTime(1.0, now + (count * 0.4));
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + (count * 0.4) + 0.25);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(now + (count * 0.4));
-                    osc.stop(now + (count * 0.4) + 0.3);
-                    setTimeout(beep, 400);
-                };
-                beep();
-            }
-
             let tickTimer = null;
             function startTickSound() {
                 stopTickSound();
-                if (state.matchActive && state.currentHolder !== null && state.audioUnlocked) {
+                if (state.matchActive && state.currentHolder !== null && state.audioLoaded) {
                     playTick();
                     tickTimer = setInterval(() => {
                         if (state.matchActive && state.currentHolder !== null) playTick();
@@ -495,20 +499,19 @@
                 if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
             }
 
-            // Разблокировка звука при первом старте (вызывается по кнопке Play)
-            function unlockAudio() {
-                if (state.audioUnlocked) return;
-                // Создаём и тут же удаляем пустой звук в ответ на действие пользователя
+            // Разблокировка аудио и загрузка файлов – вызывается при первом старте
+            async function unlockAndLoadAudio() {
+                if (state.audioLoaded) return;
                 const ctx = getAudioContext();
-                // Дополнительно создаём буфер тишины и проигрываем
+                // Разблокируем контекст (пустой звук)
                 const buffer = ctx.createBuffer(1, 1, 22050);
                 const source = ctx.createBufferSource();
                 source.buffer = buffer;
                 source.connect(ctx.destination);
                 source.start(0);
                 source.stop(0);
-                state.audioUnlocked = true;
-                console.log('Аудио разблокировано');
+                // Загружаем файлы
+                await preloadAudioFiles();
             }
 
             function formatTime(sec) {
@@ -616,8 +619,24 @@
 
             function startMatch() {
                 if (state.ended) resetMatch();
-                // Разблокируем звук прямо здесь (пользователь нажал кнопку)
-                unlockAudio();
+                // Если аудио ещё не загружено, запускаем разблокировку и загрузку
+                if (!state.audioLoaded) {
+                    unlockAndLoadAudio().then(() => {
+                        if (state.audioLoaded) {
+                            console.log('Аудио готово, запускаю игру');
+                            proceedStartMatch();
+                        }
+                    }).catch(err => {
+                        console.error('Ошибка загрузки аудио:', err);
+                        // Всё равно запускаем без звуков
+                        proceedStartMatch();
+                    });
+                } else {
+                    proceedStartMatch();
+                }
+            }
+
+            function proceedStartMatch() {
                 state.matchActive = true;
                 state.warningPlayed = false;
                 state.prevTimeLeft = state.timeLeft;
@@ -647,7 +666,7 @@
                 state.timeA = 0; state.timeB = 0;
                 state.warningPlayed = false;
                 state.prevTimeLeft = state.timeLeft;
-                stopBuiltinSiren();
+                stopSiren();
                 stopTickSound();
                 if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
                 updateUI();
@@ -659,13 +678,13 @@
                 state.ended = true;
                 state.currentHolder = null;
                 stopTickSound();
-                startBuiltinSiren();
+                startSiren();
                 updateUI();
                 btnEndGame.style.display = 'flex';
             }
 
             function finishGame() {
-                stopBuiltinSiren();
+                stopSiren();
                 state.ended = false;
                 state.currentHolder = null;
                 updateUI();
