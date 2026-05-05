@@ -280,11 +280,26 @@
                 tickInterval: null,
                 audioCtx: null,
                 buffers: { siren: null, siren1: null, siren2: null },
+                captureSounds: {}, // для звуков захвата команд
                 activeSirenNode: null,
                 audioLoaded: false,
                 warningPlayed: false,
                 warning1minPlayed: false,
                 prevTimeLeft: null,
+            };
+
+            // Звуки команд (имена файлов)
+            const TEAM_SOUNDS = {
+                'КРАСНЫЕ': 'kras.mp3',
+                'СИНИЕ': 'sinie.mp3',
+                'ЗЕЛЁНЫЕ': 'zelen.mp3',
+                'ОРАНЖЕВЫЕ': 'zeltie.mp3',
+                'ЖЁЛТЫЕ': 'zeltie.mp3',
+                'БЕЛЫЕ': 'bel.mp3',
+                'ФИОЛЕТОВЫЕ': 'sinie.mp3',
+                'РОЗОВЫЕ': 'kras.mp3',
+                'ГОЛУБЫЕ': 'sinie.mp3',
+                'ЧЁРНЫЕ': 'kras.mp3'
             };
 
             // ---------- DOM ----------
@@ -330,6 +345,16 @@
                     state.buffers.siren = await loadAudioFile('siren.mp3');
                     state.buffers.siren1 = await loadAudioFile('siren1.mp3');
                     state.buffers.siren2 = await loadAudioFile('siren2.mp3');
+                    
+                    // Загружаем звуки команд
+                    for (const [name, file] of Object.entries(TEAM_SOUNDS)) {
+                        try {
+                            state.captureSounds[name] = await loadAudioFile(file);
+                        } catch(e) {
+                            console.log(`Звук ${file} не загружен`);
+                        }
+                    }
+                    
                     state.audioLoaded = true;
                 } catch (err) { console.warn('Аудио не загружены:', err); }
             }
@@ -341,6 +366,12 @@
                 source.connect(ctx.destination);
                 source.start(0);
                 return source;
+            }
+            function playCaptureSound(teamName) {
+                const buffer = state.captureSounds[teamName];
+                if (buffer) {
+                    playBuffer(buffer, false);
+                }
             }
             function startSiren() { stopSiren(); if (state.buffers.siren) state.activeSirenNode = playBuffer(state.buffers.siren, true); }
             function stopSiren() {
@@ -471,18 +502,12 @@
                 if (state.ended || !state.matchActive) return;
                 if (state.currentHolder === team) return;
                 state.currentHolder = team;
+                
+                // Проигрываем звук захвата для команды
+                const teamName = state.teamNames[team];
+                playCaptureSound(teamName);
+                
                 startTickSound();
-                try {
-                    const ctx = getAudioContext();
-                    const o = ctx.createOscillator(); const g = ctx.createGain();
-                    o.type = 'triangle';
-                    const freq = team === 'A' ? 800 : (team === 'B' ? 600 : (team === 'C' ? 500 : 400));
-                    o.frequency.setValueAtTime(freq, ctx.currentTime);
-                    g.gain.setValueAtTime(0.6, ctx.currentTime);
-                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.2);
-                    o.connect(g); g.connect(ctx.destination);
-                    o.start(); o.stop(ctx.currentTime+0.22);
-                } catch(e) {}
                 updateUI();
             }
 
