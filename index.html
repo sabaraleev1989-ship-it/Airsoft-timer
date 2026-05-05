@@ -13,6 +13,7 @@
             --color-team-a: #e63946;
             --color-team-b: #0066ff;
             --color-team-c: #2ecc71;
+            --color-team-d: #f39c12;
             --bg: #0a0a10;
             --surface: #1a1a26;
             --text: #ffffff;
@@ -283,7 +284,7 @@
     </div>
 
     <div class="main-arena" id="mainArena">
-        <!-- Команды добавляются динамически -->
+        <!-- Команды динамически -->
     </div>
 
     <div class="modal-overlay" id="modalOverlay">
@@ -298,9 +299,11 @@
                 <select id="inputTeamCount">
                     <option value="2">2 команды</option>
                     <option value="3">3 команды</option>
+                    <option value="4">4 команды</option>
                 </select>
             </div>
             <div id="teamSettings">
+                <!-- A -->
                 <div class="setting-row">
                     <label>🔴 Название команды A</label>
                     <input type="text" id="inputNameA" value="КРАСНЫЕ" readonly>
@@ -309,6 +312,7 @@
                     <label>🎨 Цвет команды A</label>
                     <input type="color" id="inputColorA" value="#e63946">
                 </div>
+                <!-- B -->
                 <div class="setting-row">
                     <label>🔵 Название команды B</label>
                     <input type="text" id="inputNameB" value="СИНИЕ" readonly>
@@ -317,6 +321,7 @@
                     <label>🎨 Цвет команды B</label>
                     <input type="color" id="inputColorB" value="#0066ff">
                 </div>
+                <!-- C -->
                 <div id="teamCPanel" class="hidden">
                     <div class="setting-row">
                         <label>🟢 Название команды C</label>
@@ -325,6 +330,17 @@
                     <div class="setting-row">
                         <label>🎨 Цвет команды C</label>
                         <input type="color" id="inputColorC" value="#2ecc71">
+                    </div>
+                </div>
+                <!-- D -->
+                <div id="teamDPanel" class="hidden">
+                    <div class="setting-row">
+                        <label>🟠 Название команды D</label>
+                        <input type="text" id="inputNameD" value="ОРАНЖЕВЫЕ" readonly>
+                    </div>
+                    <div class="setting-row">
+                        <label>🎨 Цвет команды D</label>
+                        <input type="color" id="inputColorD" value="#f39c12">
                     </div>
                 </div>
             </div>
@@ -349,7 +365,29 @@
         const TRIAL_DAYS = 1;
         const OFFLINE_GRACE_HOURS = 1;
 
-        // ---------- COOKIE / LOCALSTORAGE ----------
+        // ---------- СТАБИЛЬНЫЙ ОТПЕЧАТОК УСТРОЙСТВА ----------
+        function generateFingerprint() {
+            const data = [
+                navigator.userAgent,
+                navigator.language,
+                Intl.DateTimeFormat().resolvedOptions().timeZone,
+                screen.colorDepth,
+                screen.width + 'x' + screen.height
+            ].join('|');
+            let hash = 0;
+            for (let i = 0; i < data.length; i++) {
+                const char = data.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash |= 0;
+            }
+            return 'dev-' + Math.abs(hash).toString(36);
+        }
+
+        function getDeviceId() {
+            return generateFingerprint();
+        }
+
+        // ---------- КЭШ СТАТУСА (куки для офлайн) ----------
         function setCookie(name, value, days) {
             let expires = '';
             if (days) {
@@ -357,7 +395,7 @@
                 date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
                 expires = '; expires=' + date.toUTCString();
             }
-            document.cookie = name + '=' + (value || '') + expires + '; path=/; SameSite=Lax';
+            document.cookie = name + '=' + encodeURIComponent(value || '') + expires + '; path=/; SameSite=Lax';
         }
         function getCookie(name) {
             const nameEQ = name + '=';
@@ -365,27 +403,18 @@
             for (let i = 0; i < ca.length; i++) {
                 let c = ca[i];
                 while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+                if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
             }
             return null;
         }
 
-        function getDeviceId() {
-            let id = localStorage.getItem('deviceId');
-            if (!id) {
-                id = 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 10);
-                localStorage.setItem('deviceId', id);
-            }
-            return id;
-        }
-
         function getCachedStatus() {
-            const cached = localStorage.getItem('licenseStatus');
+            const cached = getCookie('licenseStatus');
             if (!cached) return null;
             try { return JSON.parse(cached); } catch (e) { return null; }
         }
         function setCachedStatus(status) {
-            localStorage.setItem('licenseStatus', JSON.stringify(status));
+            setCookie('licenseStatus', JSON.stringify(status), 365);
         }
 
         // ---------- JSONBIN API ----------
@@ -434,19 +463,12 @@
         // ---------- ЛОГИКА ЛИЦЕНЗИИ ----------
         async function checkActivationWithServer() {
             const deviceId = getDeviceId();
-
             const activated = await isDeviceInList('activated', deviceId);
             if (activated === true) return { status: 'activated' };
-
             const trialUsed = await isDeviceInList('trials', deviceId);
             if (trialUsed === true) return { status: 'expired' };
-
             const added = await addDeviceToList('trials', deviceId);
-            if (added) {
-                return { status: 'trial', startTime: Date.now() };
-            } else {
-                return { status: 'trial', startTime: Date.now() };
-            }
+            return { status: 'trial', startTime: Date.now() };
         }
 
         async function getLicenseStatus() {
@@ -464,9 +486,9 @@
                     if (cached.status === 'activated') return cached;
                     if (cached.status === 'trial' && Date.now() - cached.startTime < TRIAL_DAYS * 86400000) return cached;
                     if (cached.status === 'expired') {
-                        const lastOfflineGrant = localStorage.getItem('offlineGraceStart');
+                        const lastOfflineGrant = getCookie('offlineGraceStart');
                         if (!lastOfflineGrant) {
-                            localStorage.setItem('offlineGraceStart', Date.now().toString());
+                            setCookie('offlineGraceStart', Date.now().toString(), 1);
                             return { status: 'offline_grace' };
                         } else if (Date.now() - parseInt(lastOfflineGrant) < OFFLINE_GRACE_HOURS * 3600000) {
                             return { status: 'offline_grace' };
@@ -501,17 +523,17 @@
             return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        // ---------- СОСТОЯНИЕ ИГРЫ ----------
+        // ---------- СОСТОЯНИЕ ИГРЫ (до 4 команд) ----------
         const state = {
             matchDuration: 10 * 60,
             timeLeft: 10 * 60,
             matchActive: false,
             ended: false,
             currentHolder: null,
-            times: { A: 0, B: 0, C: 0 },
+            times: { A: 0, B: 0, C: 0, D: 0 },
             teamCount: 2,
-            teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ' },
-            teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71' },
+            teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ОРАНЖЕВЫЕ' },
+            teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
             lastTick: null,
             tickInterval: null,
             audioCtx: null,
@@ -550,7 +572,10 @@
         const inputColorB = document.getElementById('inputColorB');
         const inputNameC = document.getElementById('inputNameC');
         const inputColorC = document.getElementById('inputColorC');
+        const inputNameD = document.getElementById('inputNameD');
+        const inputColorD = document.getElementById('inputColorD');
         const teamCPanel = document.getElementById('teamCPanel');
+        const teamDPanel = document.getElementById('teamDPanel');
         const btnSaveSettings = document.getElementById('btnSaveSettings');
         const btnCloseSettings = document.getElementById('btnCloseSettings');
 
@@ -626,7 +651,10 @@
         // ---------- ОТРИСОВКА ПАНЕЛЕЙ ----------
         function renderPanels() {
             mainArena.innerHTML = '';
-            const teams = state.teamCount === 2 ? ['A', 'B'] : ['A', 'B', 'C'];
+            const teams = [];
+            for (let i = 0; i < state.teamCount; i++) {
+                teams.push(String.fromCharCode(65 + i)); // A, B, C, D
+            }
             teams.forEach(team => {
                 const panel = document.createElement('div');
                 panel.className = 'team-panel inactive-for-start';
@@ -648,7 +676,10 @@
         }
 
         function updatePanelsUI() {
-            const teams = state.teamCount === 2 ? ['A', 'B'] : ['A', 'B', 'C'];
+            const teams = [];
+            for (let i = 0; i < state.teamCount; i++) {
+                teams.push(String.fromCharCode(65 + i));
+            }
             teams.forEach(team => {
                 const panel = panels[team];
                 if (!panel) return;
@@ -681,7 +712,8 @@
         }
 
         function getWinningTeam() {
-            const teams = state.teamCount === 2 ? ['A', 'B'] : ['A', 'B', 'C'];
+            const teams = [];
+            for (let i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
             let maxTeam = null, maxTime = -1;
             teams.forEach(t => { if (state.times[t] > maxTime) { maxTime = state.times[t]; maxTeam = t; } });
             return maxTeam;
@@ -723,6 +755,7 @@
             document.documentElement.style.setProperty('--color-team-a', state.teamColors.A);
             document.documentElement.style.setProperty('--color-team-b', state.teamColors.B);
             document.documentElement.style.setProperty('--color-team-c', state.teamColors.C);
+            document.documentElement.style.setProperty('--color-team-d', state.teamColors.D);
         }
 
         function capture(team) {
@@ -734,7 +767,7 @@
                 const ctx = getAudioContext();
                 const o = ctx.createOscillator(); const g = ctx.createGain();
                 o.type = 'triangle';
-                const freq = team === 'A' ? 800 : (team === 'B' ? 600 : 500);
+                const freq = team === 'A' ? 800 : (team === 'B' ? 600 : (team === 'C' ? 500 : 400));
                 o.frequency.setValueAtTime(freq, ctx.currentTime);
                 g.gain.setValueAtTime(0.6, ctx.currentTime);
                 g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.2);
@@ -770,7 +803,7 @@
             pauseMatch();
             state.timeLeft = state.matchDuration;
             state.ended = false; state.currentHolder = null;
-            state.times = { A: 0, B: 0, C: 0 };
+            state.times = { A: 0, B: 0, C: 0, D: 0 };
             state.warningPlayed = false; state.warning1minPlayed = false;
             state.prevTimeLeft = state.timeLeft;
             stopSiren();
@@ -818,7 +851,10 @@
             inputColorB.value = state.teamColors.B;
             inputNameC.value = state.teamNames.C;
             inputColorC.value = state.teamColors.C;
-            teamCPanel.classList.toggle('hidden', state.teamCount !== 3);
+            inputNameD.value = state.teamNames.D;
+            inputColorD.value = state.teamColors.D;
+            teamCPanel.classList.toggle('hidden', state.teamCount < 3);
+            teamDPanel.classList.toggle('hidden', state.teamCount < 4);
             modalOverlay.classList.add('open');
         }
         function closeSettings() { modalOverlay.classList.remove('open'); }
@@ -829,10 +865,12 @@
             state.teamCount = parseInt(inputTeamCount.value, 10);
             state.teamNames.A = inputNameA.value.trim() || 'КОМАНДА A';
             state.teamNames.B = inputNameB.value.trim() || 'КОМАНДА B';
-            if (state.teamCount === 3) state.teamNames.C = inputNameC.value.trim() || 'КОМАНДА C';
+            if (state.teamCount >= 3) state.teamNames.C = inputNameC.value.trim() || 'КОМАНДА C';
+            if (state.teamCount >= 4) state.teamNames.D = inputNameD.value.trim() || 'КОМАНДА D';
             state.teamColors.A = inputColorA.value;
             state.teamColors.B = inputColorB.value;
-            if (state.teamCount === 3) state.teamColors.C = inputColorC.value;
+            if (state.teamCount >= 3) state.teamColors.C = inputColorC.value;
+            if (state.teamCount >= 4) state.teamColors.D = inputColorD.value;
 
             localStorage.setItem('appSettings', JSON.stringify({
                 teamCount: state.teamCount,
@@ -861,7 +899,9 @@
         }
 
         inputTeamCount.addEventListener('change', () => {
-            teamCPanel.classList.toggle('hidden', inputTeamCount.value !== '3');
+            const val = parseInt(inputTeamCount.value, 10);
+            teamCPanel.classList.toggle('hidden', val < 3);
+            teamDPanel.classList.toggle('hidden', val < 4);
         });
 
         function getColorName(hex) {
@@ -883,6 +923,7 @@
         inputColorA.addEventListener('input', () => { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
         inputColorB.addEventListener('input', () => { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
         inputColorC.addEventListener('input', () => { if (inputNameC.readOnly) inputNameC.value = getColorName(inputColorC.value); });
+        inputColorD.addEventListener('input', () => { if (inputNameD.readOnly) inputNameD.value = getColorName(inputColorD.value); });
 
         // ---------- ИНИЦИАЛИЗАЦИЯ ----------
         (async function init() {
@@ -937,7 +978,8 @@
                 switch(e.key.toLowerCase()) {
                     case 'a': capture('A'); e.preventDefault(); break;
                     case 'b': capture('B'); e.preventDefault(); break;
-                    case 'c': if (state.teamCount === 3) capture('C'); e.preventDefault(); break;
+                    case 'c': if (state.teamCount >= 3) capture('C'); e.preventDefault(); break;
+                    case 'd': if (state.teamCount >= 4) capture('D'); e.preventDefault(); break;
                     case ' ': toggleMatch(); e.preventDefault(); break;
                     case 'r': resetMatch(); e.preventDefault(); break;
                     case 's': openSettings(); e.preventDefault(); break;
@@ -948,6 +990,7 @@
             document.documentElement.style.setProperty('--color-team-a', state.teamColors.A);
             document.documentElement.style.setProperty('--color-team-b', state.teamColors.B);
             document.documentElement.style.setProperty('--color-team-c', state.teamColors.C);
+            document.documentElement.style.setProperty('--color-team-d', state.teamColors.D);
         })();
     </script>
 </body>
