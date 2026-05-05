@@ -191,9 +191,7 @@
         </div>
     </div>
 
-    <div class="main-arena" id="mainArena">
-        <!-- Команды динамически -->
-    </div>
+    <div class="main-arena" id="mainArena"></div>
 
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
@@ -211,41 +209,17 @@
                 </select>
             </div>
             <div id="teamSettings">
-                <div class="setting-row">
-                    <label>🔴 Название команды A</label>
-                    <input type="text" id="inputNameA" value="КРАСНЫЕ" readonly>
-                </div>
-                <div class="setting-row">
-                    <label>🎨 Цвет команды A</label>
-                    <input type="color" id="inputColorA" value="#e63946">
-                </div>
-                <div class="setting-row">
-                    <label>🔵 Название команды B</label>
-                    <input type="text" id="inputNameB" value="СИНИЕ" readonly>
-                </div>
-                <div class="setting-row">
-                    <label>🎨 Цвет команды B</label>
-                    <input type="color" id="inputColorB" value="#0066ff">
-                </div>
+                <div class="setting-row"><label>🔴 Название команды A</label><input type="text" id="inputNameA" value="КРАСНЫЕ" readonly></div>
+                <div class="setting-row"><label>🎨 Цвет команды A</label><input type="color" id="inputColorA" value="#e63946"></div>
+                <div class="setting-row"><label>🔵 Название команды B</label><input type="text" id="inputNameB" value="СИНИЕ" readonly></div>
+                <div class="setting-row"><label>🎨 Цвет команды B</label><input type="color" id="inputColorB" value="#0066ff"></div>
                 <div id="teamCPanel" class="hidden">
-                    <div class="setting-row">
-                        <label>🟢 Название команды C</label>
-                        <input type="text" id="inputNameC" value="ЗЕЛЁНЫЕ" readonly>
-                    </div>
-                    <div class="setting-row">
-                        <label>🎨 Цвет команды C</label>
-                        <input type="color" id="inputColorC" value="#2ecc71">
-                    </div>
+                    <div class="setting-row"><label>🟢 Название команды C</label><input type="text" id="inputNameC" value="ЗЕЛЁНЫЕ" readonly></div>
+                    <div class="setting-row"><label>🎨 Цвет команды C</label><input type="color" id="inputColorC" value="#2ecc71"></div>
                 </div>
                 <div id="teamDPanel" class="hidden">
-                    <div class="setting-row">
-                        <label>🟠 Название команды D</label>
-                        <input type="text" id="inputNameD" value="ОРАНЖЕВЫЕ" readonly>
-                    </div>
-                    <div class="setting-row">
-                        <label>🎨 Цвет команды D</label>
-                        <input type="color" id="inputColorD" value="#f39c12">
-                    </div>
+                    <div class="setting-row"><label>🟠 Название команды D</label><input type="text" id="inputNameD" value="ОРАНЖЕВЫЕ" readonly></div>
+                    <div class="setting-row"><label>🎨 Цвет команды D</label><input type="color" id="inputColorD" value="#f39c12"></div>
                 </div>
             </div>
             <div class="modal-actions">
@@ -256,14 +230,6 @@
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js').then(function() {
-                    console.log('SW ok');
-                }).catch(function() {});
-            });
-        }
-
         (function() {
             var state = {
                 matchDuration: 600,
@@ -279,12 +245,10 @@
                 tickInterval: null,
                 audioCtx: null,
                 buffers: {},
-                captureSounds: {},
                 activeSirenNode: null,
                 audioLoaded: false,
                 warningPlayed: false,
-                warning1minPlayed: false,
-                prevTimeLeft: null
+                warning1minPlayed: false
             };
 
             var mainArena = document.getElementById('mainArena');
@@ -317,50 +281,23 @@
             }
 
             function loadAudioFile(url, callback) {
-                fetch(url).then(function(response) {
-                    if (!response.ok) return;
-                    return response.arrayBuffer();
-                }).then(function(buffer) {
-                    if (!buffer) return;
-                    return getAudioContext().decodeAudioData(buffer);
-                }).then(function(decoded) {
-                    if (decoded && callback) callback(url, decoded);
-                }).catch(function() {});
+                fetch(url).then(function(r) { return r.ok ? r.arrayBuffer() : null; })
+                .then(function(buf) { return buf ? getAudioContext().decodeAudioData(buf) : null; })
+                .then(function(dec) { if (dec && callback) callback(url, dec); });
             }
 
             function preloadAudioFiles() {
                 if (state.audioLoaded) return;
-                var files = ['siren.mp3', 'siren1.mp3', 'siren2.mp3', 'kras.mp3', 'sinie.mp3', 'zelen.mp3', 'zeltie.mp3', 'bel.mp3'];
-                files.forEach(function(file) {
-                    loadAudioFile(file, function(name, buffer) {
-                        state.buffers[name] = buffer;
-                        state.captureSounds[name] = buffer;
-                        if (Object.keys(state.buffers).length >= 8) {
-                            state.audioLoaded = true;
-                        }
-                    });
+                var files = ['siren.mp3','siren1.mp3','siren2.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'];
+                files.forEach(function(f) {
+                    loadAudioFile(f, function(name, buf) { state.buffers[name] = buf; });
                 });
-                setTimeout(function() {
-                    state.audioLoaded = true;
-                }, 3000);
-            }
-
-            function playBuffer(buffer, loop) {
-                if (!buffer) return;
-                var ctx = getAudioContext();
-                var source = ctx.createBufferSource();
-                source.buffer = buffer;
-                source.loop = !!loop;
-                source.connect(ctx.destination);
-                source.start(0);
-                return source;
+                setTimeout(function() { state.audioLoaded = true; }, 3000);
             }
 
             function getSoundForColor(hex) {
-                hex = hex.replace('#', '').toLowerCase();
-                var r = parseInt(hex.substr(0,2), 16);
-                var g = parseInt(hex.substr(2,2), 16);
-                var b = parseInt(hex.substr(4,2), 16);
+                hex = hex.replace('#','').toLowerCase();
+                var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
                 if (r > g && r > b) return 'kras.mp3';
                 if (b > r && b > g) return 'sinie.mp3';
                 if (g > r && g > b) return 'zelen.mp3';
@@ -369,128 +306,83 @@
                 return 'kras.mp3';
             }
 
-            function playCaptureSound(teamColor) {
-                if (!state.audioLoaded) return;
-                var file = getSoundForColor(teamColor);
-                var buffer = state.captureSounds[file];
-                if (buffer) playBuffer(buffer, false);
+            function playBuffer(buf, loop) {
+                if (!buf) return;
+                var ctx = getAudioContext();
+                var src = ctx.createBufferSource();
+                src.buffer = buf;
+                src.loop = !!loop;
+                src.connect(ctx.destination);
+                src.start(0);
+                return src;
             }
 
-            function startSiren() {
-                stopSiren();
-                if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true);
+            function playCaptureSound(color) {
+                if (!state.audioLoaded) return;
+                var file = getSoundForColor(color);
+                if (state.buffers[file]) playBuffer(state.buffers[file], false);
             }
-            function stopSiren() {
-                if (state.activeSirenNode) {
-                    try { state.activeSirenNode.stop(); } catch(e) {}
-                    state.activeSirenNode = null;
-                }
-            }
+
+            function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
+            function stopSiren() { if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode = null; } }
 
             function playTick() {
                 if (!state.audioLoaded) return;
                 try {
-                    var ctx = getAudioContext();
-                    var o = ctx.createOscillator();
-                    var g = ctx.createGain();
-                    o.type = 'square';
-                    o.frequency.setValueAtTime(1200, ctx.currentTime);
-                    g.gain.setValueAtTime(0.7, ctx.currentTime);
-                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
-                    o.connect(g);
-                    g.connect(ctx.destination);
-                    o.start();
-                    o.stop(ctx.currentTime + 0.1);
+                    var ctx = getAudioContext(), o = ctx.createOscillator(), g = ctx.createGain();
+                    o.type = 'square'; o.frequency.setValueAtTime(1200, ctx.currentTime);
+                    g.gain.setValueAtTime(0.7, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.08);
+                    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.1);
                 } catch(e) {}
             }
-
             var tickTimer = null;
             function startTickSound() {
                 stopTickSound();
                 if (state.matchActive && state.currentHolder && state.audioLoaded) {
                     playTick();
-                    tickTimer = setInterval(function() {
-                        if (state.matchActive && state.currentHolder) playTick();
-                        else stopTickSound();
-                    }, 1000);
+                    tickTimer = setInterval(function() { if (state.matchActive && state.currentHolder) playTick(); else stopTickSound(); }, 1000);
                 }
             }
-            function stopTickSound() {
-                if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
-            }
+            function stopTickSound() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
 
-            function renderPanels() {
-                mainArena.innerHTML = '';
-                panels = {};
-                var teams = [];
-                for (var i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
-                teams.forEach(function(team) {
-                    var panel = document.createElement('div');
-                    panel.className = 'team-panel inactive-for-start';
-                    panel.style.backgroundColor = state.teamColors[team];
-                    panel.innerHTML = '<div class="dim-overlay"></div><div class="team-content"><div class="team-name">' + state.teamNames[team] + '</div><div class="team-time" id="time' + team + '">00:00</div><div class="team-status" id="status' + team + '">ОЖИДАЙТЕ СТАРТА</div></div>';
-                    panel.addEventListener('click', function(e) { e.preventDefault(); capture(team); });
-                    panel.addEventListener('touchend', function(e) { e.preventDefault(); capture(team); });
-                    mainArena.appendChild(panel);
-                    panels[team] = panel;
-                });
-            }
-
-            function updatePanelsUI() {
-                var teams = [];
-                for (var i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
-                teams.forEach(function(team) {
-                    var panel = panels[team];
-                    if (!panel) return;
-                    var timeEl = panel.querySelector('.team-time');
-                    var statusEl = panel.querySelector('.team-status');
-                    var nameEl = panel.querySelector('.team-name');
-                    nameEl.textContent = state.teamNames[team];
-                    panel.style.backgroundColor = state.teamColors[team];
-                    timeEl.textContent = formatTime(state.times[team]);
-                    var txt = 'ОЖИДАЙТЕ СТАРТА';
-                    if (state.ended) {
-                        var max = getWinningTeam();
-                        txt = (team === max && max) ? '🏆 ПОБЕДИТЕЛЬ' : '';
-                    } else if (state.matchActive) {
-                        txt = state.currentHolder === team ? '⚡ УДЕРЖАНИЕ' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
-                    }
-                    statusEl.textContent = txt;
-                    panel.classList.remove('active-holder', 'dimmed', 'inactive-for-start');
-                    if (!state.matchActive && !state.ended) panel.classList.add('inactive-for-start');
-                    if (state.matchActive && !state.ended) {
-                        if (state.currentHolder === team) panel.classList.add('active-holder');
-                        else if (state.currentHolder) panel.classList.add('dimmed');
-                    }
-                });
-                btnEndGame.style.display = state.ended ? 'flex' : 'none';
+            function formatTime(sec) {
+                var m = Math.floor(sec/60), s = Math.floor(sec%60);
+                return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
             }
 
             function getWinningTeam() {
-                var teams = [];
-                for (var i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
-                var maxTeam = null, maxTime = -1;
-                teams.forEach(function(t) { if (state.times[t] > maxTime) { maxTime = state.times[t]; maxTeam = t; } });
-                return maxTeam;
-            }
-
-            function formatTime(sec) {
-                var m = Math.floor(sec / 60), s = Math.floor(sec % 60);
-                return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+                var max = null, maxT = -1;
+                ['A','B','C','D'].forEach(function(t) { if (state.times[t] > maxT) { maxT = state.times[t]; max = t; } });
+                return max;
             }
 
             function updateUI() {
                 gameTimerDisplay.textContent = formatTime(state.timeLeft);
-                gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft <= 60 && state.timeLeft > 0);
-                updatePanelsUI();
+                gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft<=60 && state.timeLeft>0);
+                var teams = ['A','B','C','D'].slice(0, state.teamCount);
+                teams.forEach(function(t) {
+                    var p = panels[t]; if (!p) return;
+                    p.querySelector('.team-name').textContent = state.teamNames[t];
+                    p.style.backgroundColor = state.teamColors[t];
+                    p.querySelector('.team-time').textContent = formatTime(state.times[t]);
+                    var txt = 'ОЖИДАЙТЕ СТАРТА';
+                    if (state.ended) { var w = getWinningTeam(); txt = (t===w&&w)?'🏆 ПОБЕДИТЕЛЬ':''; }
+                    else if (state.matchActive) txt = state.currentHolder===t ? '⚡ УДЕРЖАНИЕ' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                    p.querySelector('.team-status').textContent = txt;
+                    p.classList.remove('active-holder','dimmed','inactive-for-start');
+                    if (!state.matchActive && !state.ended) p.classList.add('inactive-for-start');
+                    if (state.matchActive && !state.ended) {
+                        if (state.currentHolder===t) p.classList.add('active-holder');
+                        else if (state.currentHolder) p.classList.add('dimmed');
+                    }
+                });
+                btnEndGame.style.display = state.ended ? 'flex' : 'none';
                 btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
-                if (state.matchActive) btnPlayPause.classList.add('active');
-                else btnPlayPause.classList.remove('active');
+                if (state.matchActive) btnPlayPause.classList.add('active'); else btnPlayPause.classList.remove('active');
             }
 
             function capture(team) {
-                if (state.ended || !state.matchActive) return;
-                if (state.currentHolder === team) return;
+                if (state.ended || !state.matchActive || state.currentHolder===team) return;
                 state.currentHolder = team;
                 playCaptureSound(state.teamColors[team]);
                 startTickSound();
@@ -501,7 +393,6 @@
                 state.matchActive = true;
                 state.warningPlayed = false;
                 state.warning1minPlayed = false;
-                state.prevTimeLeft = state.timeLeft;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
@@ -510,32 +401,19 @@
 
             function startMatch() {
                 if (state.ended) resetMatch();
-                if (!state.audioLoaded) {
-                    preloadAudioFiles();
-                    setTimeout(function() { proceedStartMatch(); }, 500);
-                } else {
-                    proceedStartMatch();
-                }
+                if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); }
+                else proceedStartMatch();
             }
 
-            function pauseMatch() {
-                state.matchActive = false;
-                state.lastTick = null;
-                stopTickSound();
-                updateUI();
-            }
-
-            function toggleMatch() {
-                if (state.ended) return;
-                state.matchActive ? pauseMatch() : startMatch();
-            }
+            function pauseMatch() { state.matchActive = false; stopTickSound(); updateUI(); }
+            function toggleMatch() { if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
 
             function resetMatch() {
                 pauseMatch();
                 state.timeLeft = state.matchDuration;
                 state.ended = false;
                 state.currentHolder = null;
-                state.times = { A: 0, B: 0, C: 0, D: 0 };
+                state.times = { A:0,B:0,C:0,D:0 };
                 state.warningPlayed = false;
                 state.warning1minPlayed = false;
                 stopSiren();
@@ -553,20 +431,15 @@
                 updateUI();
             }
 
-            function finishGame() {
-                stopSiren();
-                state.ended = false;
-                state.currentHolder = null;
-                updateUI();
-            }
+            function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); }
 
             function gameTick() {
                 var now = Date.now();
                 if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
-                var delta = (now - state.lastTick) / 1000;
-                if (delta <= 0) return;
+                var d = (now - state.lastTick) / 1000;
+                if (d <= 0) return;
                 var prev = state.timeLeft;
-                state.timeLeft -= delta;
+                state.timeLeft -= d;
                 if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
                     state.warningPlayed = true;
                     if (state.buffers['siren1.mp3']) playBuffer(state.buffers['siren1.mp3'], false);
@@ -575,40 +448,69 @@
                     state.warning1minPlayed = true;
                     if (state.buffers['siren2.mp3']) playBuffer(state.buffers['siren2.mp3'], false);
                 }
-                if (state.timeLeft <= 0) {
-                    state.timeLeft = 0;
-                    state.lastTick = null;
-                    endMatchByTimer();
-                    return;
-                }
-                if (state.currentHolder) state.times[state.currentHolder] += delta;
+                if (state.timeLeft <= 0) { state.timeLeft = 0; endMatchByTimer(); return; }
+                if (state.currentHolder) state.times[state.currentHolder] += d;
                 state.lastTick = now;
                 updateUI();
             }
 
+            function renderPanels() {
+                mainArena.innerHTML = '';
+                panels = {};
+                for (var i = 0; i < state.teamCount; i++) {
+                    var team = String.fromCharCode(65+i);
+                    var panel = document.createElement('div');
+                    panel.className = 'team-panel inactive-for-start';
+                    panel.style.backgroundColor = state.teamColors[team];
+                    panel.innerHTML = '<div class="dim-overlay"></div><div class="team-content"><div class="team-name">'+state.teamNames[team]+'</div><div class="team-time" id="time'+team+'">00:00</div><div class="team-status" id="status'+team+'">ОЖИДАЙТЕ СТАРТА</div></div>';
+                    panel.addEventListener('click', (function(t) { return function(e) { e.preventDefault(); capture(t); }; })(team));
+                    panel.addEventListener('touchend', (function(t) { return function(e) { e.preventDefault(); capture(t); }; })(team));
+                    mainArena.appendChild(panel);
+                    panels[team] = panel;
+                }
+            }
+
+            function getColorName(hex) {
+                hex = hex.replace('#','').toLowerCase();
+                var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+                if (r > g && r > b) return 'Красные';
+                if (b > r && b > g) return 'Синие';
+                if (g > r && g > b) return 'Зелёные';
+                if (r > 200 && g > 200 && b < 100) return 'Жёлтые';
+                if (r > 200 && g > 200 && b > 200) return 'Белые';
+                if (r > 200 && g < 100 && b < 100) return 'Красные';
+                if (r < 100 && g < 100 && b > 200) return 'Синие';
+                if (r < 100 && g > 200 && b < 100) return 'Зелёные';
+                return 'Команда';
+            }
+
+            inputColorA.addEventListener('input', function() { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
+            inputColorB.addEventListener('input', function() { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
+            inputColorC.addEventListener('input', function() { if (inputNameC.readOnly) inputNameC.value = getColorName(inputColorC.value); });
+            inputColorD.addEventListener('input', function() { if (inputNameD.readOnly) inputNameD.value = getColorName(inputColorD.value); });
+
+            inputTeamCount.addEventListener('change', function() {
+                var v = parseInt(inputTeamCount.value, 10);
+                teamCPanel.classList.toggle('hidden', v < 3);
+                teamDPanel.classList.toggle('hidden', v < 4);
+            });
+
             function openSettings() {
-                inputMatchMin.value = Math.round(state.matchDuration / 60);
+                inputMatchMin.value = Math.round(state.matchDuration/60);
                 inputTeamCount.value = state.teamCount;
-                inputNameA.value = state.teamNames.A;
-                inputColorA.value = state.teamColors.A;
-                inputNameB.value = state.teamNames.B;
-                inputColorB.value = state.teamColors.B;
-                inputNameC.value = state.teamNames.C;
-                inputColorC.value = state.teamColors.C;
-                inputNameD.value = state.teamNames.D;
-                inputColorD.value = state.teamColors.D;
-                if (state.teamCount < 3) teamCPanel.classList.add('hidden');
-                else teamCPanel.classList.remove('hidden');
-                if (state.teamCount < 4) teamDPanel.classList.add('hidden');
-                else teamDPanel.classList.remove('hidden');
+                inputNameA.value = state.teamNames.A; inputColorA.value = state.teamColors.A;
+                inputNameB.value = state.teamNames.B; inputColorB.value = state.teamColors.B;
+                inputNameC.value = state.teamNames.C; inputColorC.value = state.teamColors.C;
+                inputNameD.value = state.teamNames.D; inputColorD.value = state.teamColors.D;
+                teamCPanel.classList.toggle('hidden', state.teamCount < 3);
+                teamDPanel.classList.toggle('hidden', state.teamCount < 4);
                 modalOverlay.classList.add('open');
             }
 
             function closeSettings() { modalOverlay.classList.remove('open'); }
 
             function saveSettings() {
-                var mins = parseInt(inputMatchMin.value, 10);
-                if (isNaN(mins) || mins < 1) mins = 10;
+                var mins = parseInt(inputMatchMin.value, 10); if (isNaN(mins) || mins<1) mins = 10;
                 state.matchDuration = mins * 60;
                 state.teamCount = parseInt(inputTeamCount.value, 10);
                 state.teamNames.A = inputNameA.value.trim() || 'A';
@@ -635,50 +537,40 @@
                 var saved = localStorage.getItem('appSettings');
                 if (saved) {
                     try {
-                        var data = JSON.parse(saved);
-                        state.teamCount = data.teamCount || 2;
-                        state.teamNames = data.names || state.teamNames;
-                        state.teamColors = data.colors || state.teamColors;
-                        state.matchDuration = data.matchDuration || 600;
+                        var d = JSON.parse(saved);
+                        state.teamCount = d.teamCount || 2;
+                        state.teamNames = d.names || state.teamNames;
+                        state.teamColors = d.colors || state.teamColors;
+                        state.matchDuration = d.matchDuration || 600;
                     } catch(e) {}
                 }
                 state.timeLeft = state.matchDuration;
             }
 
-            inputTeamCount.addEventListener('change', function() {
-                var val = parseInt(inputTeamCount.value, 10);
-                if (val < 3) teamCPanel.classList.add('hidden');
-                else teamCPanel.classList.remove('hidden');
-                if (val < 4) teamDPanel.classList.add('hidden');
-                else teamDPanel.classList.remove('hidden');
+            btnPlayPause.addEventListener('click', toggleMatch);
+            btnReset.addEventListener('click', resetMatch);
+            btnSettings.addEventListener('click', openSettings);
+            btnEndGame.addEventListener('click', finishGame);
+            btnSaveSettings.addEventListener('click', saveSettings);
+            btnCloseSettings.addEventListener('click', closeSettings);
+            modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeSettings(); });
+
+            window.addEventListener('keydown', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                if (e.key === 'a') { capture('A'); e.preventDefault(); }
+                if (e.key === 'b') { capture('B'); e.preventDefault(); }
+                if (e.key === 'c' && state.teamCount >= 3) { capture('C'); e.preventDefault(); }
+                if (e.key === 'd' && state.teamCount >= 4) { capture('D'); e.preventDefault(); }
+                if (e.key === ' ') { toggleMatch(); e.preventDefault(); }
+                if (e.key === 'r') { resetMatch(); e.preventDefault(); }
+                if (e.key === 's') { openSettings(); e.preventDefault(); }
+                if (e.key === 'Escape') { closeSettings(); }
             });
 
-            function init() {
-                loadSettings();
-                renderPanels();
-                updateUI();
-                btnPlayPause.addEventListener('click', toggleMatch);
-                btnReset.addEventListener('click', resetMatch);
-                btnSettings.addEventListener('click', openSettings);
-                btnEndGame.addEventListener('click', finishGame);
-                btnSaveSettings.addEventListener('click', saveSettings);
-                btnCloseSettings.addEventListener('click', closeSettings);
-                modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeSettings(); });
-                window.addEventListener('keydown', function(e) {
-                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-                    if (e.key === 'a') { capture('A'); e.preventDefault(); }
-                    if (e.key === 'b') { capture('B'); e.preventDefault(); }
-                    if (e.key === 'c' && state.teamCount >= 3) { capture('C'); e.preventDefault(); }
-                    if (e.key === 'd' && state.teamCount >= 4) { capture('D'); e.preventDefault(); }
-                    if (e.key === ' ') { toggleMatch(); e.preventDefault(); }
-                    if (e.key === 'r') { resetMatch(); e.preventDefault(); }
-                    if (e.key === 's') { openSettings(); e.preventDefault(); }
-                    if (e.key === 'Escape') { closeSettings(); }
-                });
-                preloadAudioFiles();
-            }
-
-            init();
+            loadSettings();
+            renderPanels();
+            updateUI();
+            preloadAudioFiles();
         })();
     </script>
 </body>
