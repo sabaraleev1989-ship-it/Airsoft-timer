@@ -19,157 +19,45 @@
             --text: #ffffff;
             --gold: #f4a261;
         }
-        * {
-            margin: 0; padding: 0; box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none; -webkit-user-select: none;
-        }
-        html, body {
-            width: 100%; height: 100%; overflow: hidden;
-            background: var(--bg); color: var(--text);
-            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
-            touch-action: manipulation;
-            display: flex; flex-direction: column;
-        }
-        .topbar {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 8px; padding: 6px 10px; background: var(--surface);
-            border-bottom: 2px solid rgba(255,255,255,0.08);
-            flex-shrink: 0; z-index: 10; flex-wrap: nowrap;
-        }
-        .game-timer-box {
-            display: flex; align-items: center; gap: 6px;
-            background: #00000033; border-radius: 30px;
-            padding: 4px 12px; backdrop-filter: blur(8px);
-        }
-        .game-timer-label {
-            font-size: 0.75rem; letter-spacing: 1.5px;
-            color: #aaa; font-weight: 600; text-transform: uppercase;
-        }
-        .game-timer-display {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.6rem; font-weight: 700; color: #fff;
-            text-shadow: 0 0 8px rgba(255,255,255,0.3);
-            min-width: 72px; text-align: center;
-        }
-        .game-timer-display.warning {
-            color: #e76f51; animation: pulse-warn 0.7s infinite;
-        }
-        .btn-icon {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.15);
-            color: #fff; font-size: 1.3rem; width: 40px; height: 40px;
-            border-radius: 50%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.2s; backdrop-filter: blur(4px);
-            flex-shrink: 0;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif; touch-action: manipulation; display: flex; flex-direction: column; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--surface); border-bottom: 2px solid rgba(255,255,255,0.08); flex-shrink: 0; z-index: 10; flex-wrap: nowrap; }
+        .game-timer-box { display: flex; align-items: center; gap: 6px; background: #00000033; border-radius: 30px; padding: 4px 12px; backdrop-filter: blur(8px); }
+        .game-timer-label { font-size: 0.75rem; letter-spacing: 1.5px; color: #aaa; font-weight: 600; text-transform: uppercase; }
+        .game-timer-display { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.3); min-width: 72px; text-align: center; }
+        .game-timer-display.warning { color: #e76f51; animation: pulse-warn 0.7s infinite; }
+        .btn-icon { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; font-size: 1.3rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; backdrop-filter: blur(4px); flex-shrink: 0; }
         .btn-icon:hover { background: rgba(255,255,255,0.2); }
         .btn-icon:active { transform: scale(0.92); }
         .btn-icon.active { background: var(--gold); border-color: var(--gold); color: #000; }
-        .topbar-buttons {
-            display: flex; gap: 6px; align-items: center;
-        }
+        .topbar-buttons { display: flex; gap: 6px; align-items: center; }
 
-        .main-arena {
-            flex: 1; display: flex; flex-direction: column; gap: 4px;
-            padding: 4px; min-height: 0;
-        }
-        .team-panel {
-            flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            border-radius: 18px; cursor: pointer; transition: 0.2s;
-            border: 3px solid rgba(255,255,255,0.25);
-            position: relative; overflow: hidden;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.6);
-            min-height: 0;
-        }
+        .main-arena { flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 4px; min-height: 0; }
+        .team-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 18px; cursor: pointer; transition: 0.2s; border: 3px solid rgba(255,255,255,0.25); position: relative; overflow: hidden; box-shadow: inset 0 0 50px rgba(0,0,0,0.6); min-height: 0; }
         .team-panel:active { transform: scale(0.97); }
-        .team-panel.inactive-for-start {
-            cursor: default; filter: grayscale(0.4);
-        }
+        .team-panel.inactive-for-start { cursor: default; filter: grayscale(0.4); }
         .team-panel.inactive-for-start:active { transform: none; }
-        .dim-overlay {
-            position: absolute; inset: 0;
-            background: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
-            opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 1;
-        }
+        .dim-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 1; }
         .team-panel.dimmed .dim-overlay { opacity: 1; }
-        .team-content {
-            position: relative; z-index: 2;
-            display: flex; flex-direction: column; align-items: center;
-            gap: 6px; text-align: center; padding: 8px; width: 100%;
-        }
-        .team-name {
-            font-size: clamp(1.4rem, 5vw, 2.4rem); font-weight: 800;
-            letter-spacing: 2px; text-transform: uppercase; color: #ffffff;
-            text-shadow: 3px 3px 10px rgba(0,0,0,0.9), 0 0 15px rgba(0,0,0,0.8);
-            white-space: nowrap;
-        }
-        .team-time {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: clamp(2.8rem, 10vw, 6rem); font-weight: 900;
-            color: #ffffff;
-            text-shadow: 3px 3px 12px rgba(0,0,0,0.9), 0 0 25px rgba(0,0,0,0.8);
-            line-height: 1;
-        }
-        .team-status {
-            font-size: clamp(0.9rem, 2.5vw, 1.4rem); font-weight: 700;
-            letter-spacing: 1px; background: rgba(0,0,0,0.7);
-            padding: 6px 18px; border-radius: 30px; color: #ffffff;
-            text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
-            backdrop-filter: blur(4px); white-space: nowrap;
-            max-width: 95%; overflow: hidden; text-overflow: ellipsis;
-        }
-        .team-panel.active-holder {
-            animation: activeGlow 1.2s infinite;
-            border-color: rgba(255, 255, 255, 0.7);
-        }
-        @keyframes activeGlow {
-            0%,100% { box-shadow: 0 0 30px rgba(255,255,255,0.6), inset 0 0 30px rgba(0,0,0,0.4); }
-            50% { box-shadow: 0 0 60px rgba(255,255,255,0.8), inset 0 0 50px rgba(255,255,255,0.15); }
-        }
+        .team-content { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 8px; width: 100%; }
+        .team-name { font-size: clamp(1.4rem, 5vw, 2.4rem); font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #ffffff; text-shadow: 3px 3px 10px rgba(0,0,0,0.9), 0 0 15px rgba(0,0,0,0.8); white-space: nowrap; }
+        .team-time { font-family: 'JetBrains Mono', monospace; font-size: clamp(2.8rem, 10vw, 6rem); font-weight: 900; color: #ffffff; text-shadow: 3px 3px 12px rgba(0,0,0,0.9), 0 0 25px rgba(0,0,0,0.8); line-height: 1; }
+        .team-status { font-size: clamp(0.9rem, 2.5vw, 1.4rem); font-weight: 700; letter-spacing: 1px; background: rgba(0,0,0,0.7); padding: 6px 18px; border-radius: 30px; color: #ffffff; text-shadow: 2px 2px 6px rgba(0,0,0,0.9); backdrop-filter: blur(4px); white-space: nowrap; max-width: 95%; overflow: hidden; text-overflow: ellipsis; }
+        .team-panel.active-holder { animation: activeGlow 1.2s infinite; border-color: rgba(255, 255, 255, 0.7); }
+        @keyframes activeGlow { 0%,100% { box-shadow: 0 0 30px rgba(255,255,255,0.6), inset 0 0 30px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 60px rgba(255,255,255,0.8), inset 0 0 50px rgba(255,255,255,0.15); } }
 
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(8px); z-index: 100;
-            display: flex; align-items: center; justify-content: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s;
-        }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
-        .modal {
-            background: var(--surface); border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 20px; padding: 24px 20px;
-            max-width: 450px; width: 90%; display: flex; flex-direction: column; gap: 16px;
-        }
+        .modal { background: var(--surface); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 24px 20px; max-width: 450px; width: 90%; display: flex; flex-direction: column; gap: 16px; }
         .modal h2 { text-align: center; font-size: 1.3rem; }
-        .setting-row {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 8px; flex-wrap: wrap;
-        }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
         .setting-row label { font-weight: 600; font-size: 0.9rem; color: #ccc; flex: 1; }
-        .setting-row input[type="number"],
-        .setting-row input[type="text"],
-        .setting-row select {
-            background: #0f0f17; border: 1px solid rgba(255,255,255,0.2);
-            color: #fff; padding: 8px 10px; border-radius: 14px;
-            font-size: 1rem; font-weight: 700; text-align: center; width: 100px;
-        }
+        .setting-row input[type="number"], .setting-row input[type="text"], .setting-row select { background: #0f0f17; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 10px; border-radius: 14px; font-size: 1rem; font-weight: 700; text-align: center; width: 100px; }
         .setting-row select { width: 120px; }
-        .setting-row input[type="text"]:read-only {
-            opacity: 0.7; background: #1a1a24;
-        }
-        .setting-row input[type="color"] {
-            width: 50px; height: 38px; border: none; background: transparent; cursor: pointer;
-        }
+        .setting-row input[type="text"]:read-only { opacity: 0.7; background: #1a1a24; }
+        .setting-row input[type="color"] { width: 50px; height: 38px; border: none; background: transparent; cursor: pointer; }
         .modal-actions { display: flex; gap: 10px; justify-content: center; }
-        .btn {
-            padding: 10px 20px; border-radius: 30px; border: none;
-            font-weight: 700; font-size: 0.9rem; letter-spacing: 1px;
-            cursor: pointer; text-transform: uppercase;
-            background: rgba(255,255,255,0.1); color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
+        .btn { padding: 10px 20px; border-radius: 30px; border: none; font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
         .btn:hover { background: rgba(255,255,255,0.2); }
         .btn.primary { background: var(--gold); color: #000; border-color: var(--gold); }
         .btn.danger { background: #e63946; border-color: #e63946; }
@@ -212,10 +100,7 @@
                     <div class="setting-row"><label>🎨 Цвет команды D</label><input type="color" id="inputColorD" value="#f39c12"></div>
                 </div>
             </div>
-            <div class="modal-actions">
-                <button class="btn primary" id="btnSaveSettings">💾 Сохранить</button>
-                <button class="btn danger" id="btnCloseSettings">✖ Закрыть</button>
-            </div>
+            <div class="modal-actions"><button class="btn primary" id="btnSaveSettings">💾 Сохранить</button><button class="btn danger" id="btnCloseSettings">✖ Закрыть</button></div>
         </div>
     </div>
 
@@ -233,7 +118,7 @@
                 teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ОРАНЖЕВЫЕ' },
                 teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
                 lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
-                audioLoaded: false, warningPlayed: false, warning1minPlayed: false, startSoundPlayed: false
+                audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false
             };
 
             var mainArena = document.getElementById('mainArena');
@@ -378,7 +263,7 @@
                 state.matchActive = true;
                 state.warningPlayed = false;
                 state.warning1minPlayed = false;
-                state.startSoundPlayed = false;
+                state.tenMinPlayed = false;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
@@ -399,7 +284,7 @@
                 state.timeLeft = state.matchDuration;
                 state.ended = false; state.currentHolder = null;
                 state.times = { A:0,B:0,C:0,D:0 };
-                state.warningPlayed = false; state.warning1minPlayed = false; state.startSoundPlayed = false;
+                state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false;
                 stopSiren();
                 if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
                 updateUI(); btnEndGame.style.display = 'none';
@@ -419,10 +304,10 @@
                 var prev = state.timeLeft;
                 state.timeLeft -= d;
 
-                // Звук старта (10:00) — проигрывается один раз в начале
-                if (!state.startSoundPlayed && state.timeLeft > 0 && state.buffers['siren3.mp3']) {
-                    state.startSoundPlayed = true;
-                    playBuffer(state.buffers['siren3.mp3'], false);
+                // Звук при достижении ровно 10:00 (600 секунд)
+                if (prev > 600 && state.timeLeft <= 600 && !state.tenMinPlayed && state.timeLeft > 0) {
+                    state.tenMinPlayed = true;
+                    if (state.buffers['siren3.mp3']) playBuffer(state.buffers['siren3.mp3'], false);
                 }
 
                 // Предупреждение за 5 минут
