@@ -233,7 +233,7 @@
                 teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ОРАНЖЕВЫЕ' },
                 teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
                 lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
-                audioLoaded: false, warningPlayed: false, warning1minPlayed: false
+                audioLoaded: false, warningPlayed: false, warning1minPlayed: false, startSoundPlayed: false
             };
 
             var mainArena = document.getElementById('mainArena');
@@ -273,32 +273,23 @@
 
             function preloadAudioFiles() {
                 if (state.audioLoaded) return;
-                var files = ['siren.mp3','siren1.mp3','siren2.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'];
+                var files = ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'];
                 files.forEach(function(f) {
                     loadAudioFile(f, function(name, buf) { state.buffers[name] = buf; });
                 });
                 setTimeout(function() { state.audioLoaded = true; }, 3000);
             }
 
-            // ИСПРАВЛЕННАЯ ФУНКЦИЯ ОПРЕДЕЛЕНИЯ ЗВУКА ПО ЦВЕТУ
             function getSoundForColor(hex) {
                 hex = hex.replace('#','').toLowerCase();
                 var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
-                // Жёлтый или оранжевый
                 if ((r > 200 && g > 180 && b < 100) || (r > 200 && g > 80 && g < 180 && b < 80)) return 'zeltie.mp3';
-                // Белый
                 if (r > 200 && g > 200 && b > 200) return 'bel.mp3';
-                // Красный
                 if (r > g && r > b) return 'kras.mp3';
-                // Синий
                 if (b > r && b > g) return 'sinie.mp3';
-                // Зелёный
                 if (g > r && g > b) return 'zelen.mp3';
-                // Розовый → как красный
                 if (r > 180 && b > 150) return 'kras.mp3';
-                // Голубой → как синий
                 if (g > 180 && b > 150) return 'sinie.mp3';
-                // Фиолетовый → как синий
                 if (r > 120 && b > 180) return 'sinie.mp3';
                 return 'kras.mp3';
             }
@@ -384,10 +375,14 @@
             }
 
             function proceedStartMatch() {
-                state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false;
+                state.matchActive = true;
+                state.warningPlayed = false;
+                state.warning1minPlayed = false;
+                state.startSoundPlayed = false;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
-                updateUI(); if (state.currentHolder) startTickSound();
+                updateUI();
+                if (state.currentHolder) startTickSound();
             }
 
             function startMatch() {
@@ -400,29 +395,51 @@
             function toggleMatch() { if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
 
             function resetMatch() {
-                pauseMatch(); state.timeLeft = state.matchDuration; state.ended = false; state.currentHolder = null;
-                state.times = { A:0,B:0,C:0,D:0 }; state.warningPlayed = false; state.warning1minPlayed = false;
-                stopSiren(); if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
+                pauseMatch();
+                state.timeLeft = state.matchDuration;
+                state.ended = false; state.currentHolder = null;
+                state.times = { A:0,B:0,C:0,D:0 };
+                state.warningPlayed = false; state.warning1minPlayed = false; state.startSoundPlayed = false;
+                stopSiren();
+                if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
                 updateUI(); btnEndGame.style.display = 'none';
             }
 
-            function endMatchByTimer() { state.matchActive = false; state.ended = true; state.currentHolder = null; stopTickSound(); startSiren(); updateUI(); }
+            function endMatchByTimer() {
+                state.matchActive = false; state.ended = true; state.currentHolder = null;
+                stopTickSound(); startSiren(); updateUI();
+            }
             function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); }
 
             function gameTick() {
                 var now = Date.now();
                 if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
-                var d = (now - state.lastTick) / 1000; if (d <= 0) return;
-                var prev = state.timeLeft; state.timeLeft -= d;
+                var d = (now - state.lastTick) / 1000;
+                if (d <= 0) return;
+                var prev = state.timeLeft;
+                state.timeLeft -= d;
+
+                // Звук старта (10:00) — проигрывается один раз в начале
+                if (!state.startSoundPlayed && state.timeLeft > 0 && state.buffers['siren3.mp3']) {
+                    state.startSoundPlayed = true;
+                    playBuffer(state.buffers['siren3.mp3'], false);
+                }
+
+                // Предупреждение за 5 минут
                 if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
-                    state.warningPlayed = true; if (state.buffers['siren1.mp3']) playBuffer(state.buffers['siren1.mp3'], false);
+                    state.warningPlayed = true;
+                    if (state.buffers['siren1.mp3']) playBuffer(state.buffers['siren1.mp3'], false);
                 }
+                // Предупреждение за 1 минуту
                 if (prev > 60 && state.timeLeft <= 60 && !state.warning1minPlayed && state.timeLeft > 0) {
-                    state.warning1minPlayed = true; if (state.buffers['siren2.mp3']) playBuffer(state.buffers['siren2.mp3'], false);
+                    state.warning1minPlayed = true;
+                    if (state.buffers['siren2.mp3']) playBuffer(state.buffers['siren2.mp3'], false);
                 }
+
                 if (state.timeLeft <= 0) { state.timeLeft = 0; endMatchByTimer(); return; }
                 if (state.currentHolder) state.times[state.currentHolder] += d;
-                state.lastTick = now; updateUI();
+                state.lastTick = now;
+                updateUI();
             }
 
             function renderPanels() {
@@ -439,7 +456,6 @@
                 }
             }
 
-            // ИСПРАВЛЕННАЯ ФУНКЦИЯ ОПРЕДЕЛЕНИЯ НАЗВАНИЯ ПО ЦВЕТУ
             function getColorName(hex) {
                 hex = hex.replace('#','').toLowerCase();
                 var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
