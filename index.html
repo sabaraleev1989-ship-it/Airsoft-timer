@@ -30,10 +30,13 @@
             display: flex; flex-direction: column;
         }
         .topbar {
-            display: flex; align-items: center; justify-content: center;
+            display: flex; align-items: center; justify-content: space-between;
             gap: 8px; padding: 8px 12px; background: var(--surface);
             border-bottom: 2px solid rgba(255,255,255,0.08);
             flex-shrink: 0; z-index: 10; flex-wrap: wrap;
+        }
+        .topbar-left {
+            display: flex; align-items: center; gap: 8px;
         }
         .game-timer-box {
             display: flex; align-items: center; gap: 6px;
@@ -52,6 +55,10 @@
         }
         .game-timer-display.warning {
             color: #e76f51; animation: pulse-warn 0.7s infinite;
+        }
+        .trial-indicator {
+            font-size: 0.75rem; opacity: 0.8; color: #ccc;
+            margin-left: 10px; white-space: nowrap;
         }
         .btn-icon {
             background: rgba(255,255,255,0.08);
@@ -169,6 +176,22 @@
         }
         .paywall-status { font-size: 0.9rem; min-height: 20px; color: #e76f51; }
 
+        /* Информационное окно пробного периода */
+        .trial-info-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px); z-index: 600;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .trial-info-overlay.active { opacity: 1; pointer-events: auto; }
+        .trial-info-card {
+            background: var(--surface); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 20px; padding: 24px 20px; max-width: 350px;
+            width: 85%; text-align: center; display: flex; flex-direction: column; gap: 16px;
+        }
+        .trial-info-card h3 { font-size: 1.3rem; font-weight: 700; }
+        .trial-info-card p { font-size: 0.95rem; opacity: 0.9; line-height: 1.4; }
+
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.8);
             backdrop-filter: blur(8px); z-index: 100;
@@ -215,6 +238,15 @@
 </head>
 <body>
 
+    <!-- Информационное окно пробного периода -->
+    <div class="trial-info-overlay" id="trialInfoOverlay">
+        <div class="trial-info-card">
+            <h3>🎁 Пробный период</h3>
+            <p>Активирован пробный период на <strong>24 часа</strong>.<br>Далее доступ навсегда за <strong>500 ₽</strong>.</p>
+            <button class="paywall-btn primary" id="btnTrialOk">Понятно</button>
+        </div>
+    </div>
+
     <!-- Paywall -->
     <div class="paywall-overlay" id="paywallOverlay">
         <div class="paywall-card">
@@ -233,14 +265,19 @@
     </div>
 
     <div class="topbar">
-        <div class="game-timer-box">
-            <span class="game-timer-label">⏱ МАТЧ</span>
-            <span class="game-timer-display" id="gameTimerDisplay">10:00</span>
+        <div class="topbar-left">
+            <div class="game-timer-box">
+                <span class="game-timer-label">⏱ МАТЧ</span>
+                <span class="game-timer-display" id="gameTimerDisplay">10:00</span>
+            </div>
+            <span class="trial-indicator" id="trialIndicator"></span>
         </div>
-        <button class="btn-icon" id="btnPlayPause" title="Старт / Пауза">▶</button>
-        <button class="btn-icon" id="btnReset" title="Сбросить матч">↺</button>
-        <button class="btn-icon" id="btnSettings" title="Настройки">⚙️</button>
-        <button class="btn-icon" id="btnEndGame" title="Завершить игру (остановить сирену)" style="display:none; background:#e76f51;">🔔</button>
+        <div style="display: flex; gap: 6px;">
+            <button class="btn-icon" id="btnPlayPause" title="Старт / Пауза">▶</button>
+            <button class="btn-icon" id="btnReset" title="Сбросить матч">↺</button>
+            <button class="btn-icon" id="btnSettings" title="Настройки">⚙️</button>
+            <button class="btn-icon" id="btnEndGame" title="Завершить игру (остановить сирену)" style="display:none; background:#e76f51;">🔔</button>
+        </div>
     </div>
 
     <div class="main-arena">
@@ -329,7 +366,7 @@
             const trialStart = localStorage.getItem('trialStart');
             if (!trialStart) {
                 localStorage.setItem('trialStart', Date.now().toString());
-                return true;
+                return true; // сегодня первый день
             }
             const elapsed = Date.now() - parseInt(trialStart);
             if (elapsed < TRIAL_DAYS * 24 * 60 * 60 * 1000) return true;
@@ -373,6 +410,9 @@
         const btnActivate = document.getElementById('btnActivate');
         const btnClosePaywall = document.getElementById('btnClosePaywall');
         const paywallStatus = document.getElementById('paywallStatus');
+        const trialInfoOverlay = document.getElementById('trialInfoOverlay');
+        const btnTrialOk = document.getElementById('btnTrialOk');
+        const trialIndicator = document.getElementById('trialIndicator');
 
         const gameTimerDisplay = document.getElementById('gameTimerDisplay');
         const panelA = document.getElementById('panelA');
@@ -590,6 +630,31 @@
             btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
             btnPlayPause.classList.toggle('active', state.matchActive);
             btnEndGame.style.display = state.ended ? 'flex' : 'none';
+
+            updateTrialIndicator();
+        }
+
+        function updateTrialIndicator() {
+            const activated = localStorage.getItem('activated') === 'true';
+            if (activated) {
+                trialIndicator.textContent = '';
+                return;
+            }
+            const trialStart = localStorage.getItem('trialStart');
+            if (!trialStart) {
+                trialIndicator.textContent = '⏳ Пробный период: 24ч';
+                return;
+            }
+            const now = Date.now();
+            const end = parseInt(trialStart) + 24*60*60*1000;
+            const remaining = end - now;
+            if (remaining <= 0) {
+                trialIndicator.textContent = '🔒 Пробный период истёк';
+            } else {
+                const hours = Math.floor(remaining / (60*60*1000));
+                const mins = Math.floor((remaining % (60*60*1000)) / (60*1000));
+                trialIndicator.textContent = `⏳ Осталось: ${hours}ч ${mins}м`;
+            }
         }
 
         function applySettingsToUI() {
@@ -726,8 +791,8 @@
             updateUI();
         }
 
-        // ---------- Paywall логика ----------
-        (async function initPaywall() {
+        // ---------- Инициализация ----------
+        (async function init() {
             const isActivated = await checkActivation();
             if (!isActivated) {
                 appLocked = true;
@@ -735,8 +800,20 @@
                 paywallOverlay.classList.add('active');
             } else {
                 appLocked = false;
-                paywallOverlay.classList.remove('active');
+                // Показать информационное окно о пробном периоде при первом запуске
+                const trialInfoShown = localStorage.getItem('trialInfoShown');
+                const trialStart = localStorage.getItem('trialStart');
+                const activated = localStorage.getItem('activated') === 'true';
+                if (!trialInfoShown && !activated) {
+                    trialInfoOverlay.classList.add('active');
+                }
+                updateTrialIndicator();
             }
+
+            btnTrialOk.addEventListener('click', () => {
+                trialInfoOverlay.classList.remove('active');
+                localStorage.setItem('trialInfoShown', 'true');
+            });
 
             btnActivate.addEventListener('click', async () => {
                 const code = activationCodeInput.value.trim();
@@ -746,6 +823,7 @@
                     appLocked = false;
                     paywallOverlay.classList.remove('active');
                     paywallStatus.textContent = '';
+                    updateTrialIndicator();
                 } else {
                     paywallStatus.textContent = 'Неверный код активации';
                 }
@@ -757,59 +835,59 @@
                     setTimeout(() => { if (appLocked) paywallOverlay.classList.add('active'); }, 2000);
                 }
             });
-        })();
 
-        // ---------- Обработчики интерфейса ----------
-        panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
-        panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
-        panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
-        panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
+            // Обработчики интерфейса
+            panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
+            panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
+            panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
+            panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
 
-        btnPlayPause.addEventListener('click', toggleMatch);
-        btnReset.addEventListener('click', resetMatch);
-        btnSettings.addEventListener('click', () => {
-            inputMatchMin.value = Math.round(state.matchDuration / 60);
-            inputNameA.value = state.nameA;
-            inputColorA.value = state.colorA;
-            inputNameB.value = state.nameB;
-            inputColorB.value = state.colorB;
-            modalOverlay.classList.add('open');
-        });
-        btnEndGame.addEventListener('click', finishGame);
-        btnSaveSettings.addEventListener('click', () => {
-            let mins = parseInt(inputMatchMin.value, 10);
-            if (isNaN(mins) || mins<1) mins=10;
-            state.matchDuration = mins*60;
-            state.nameA = inputNameA.value.trim() || 'КОМАНДА A';
-            state.nameB = inputNameB.value.trim() || 'КОМАНДА B';
-            state.colorA = inputColorA.value;
-            state.colorB = inputColorB.value;
+            btnPlayPause.addEventListener('click', toggleMatch);
+            btnReset.addEventListener('click', resetMatch);
+            btnSettings.addEventListener('click', () => {
+                inputMatchMin.value = Math.round(state.matchDuration / 60);
+                inputNameA.value = state.nameA;
+                inputColorA.value = state.colorA;
+                inputNameB.value = state.nameB;
+                inputColorB.value = state.colorB;
+                modalOverlay.classList.add('open');
+            });
+            btnEndGame.addEventListener('click', finishGame);
+            btnSaveSettings.addEventListener('click', () => {
+                let mins = parseInt(inputMatchMin.value, 10);
+                if (isNaN(mins) || mins<1) mins=10;
+                state.matchDuration = mins*60;
+                state.nameA = inputNameA.value.trim() || 'КОМАНДА A';
+                state.nameB = inputNameB.value.trim() || 'КОМАНДА B';
+                state.colorA = inputColorA.value;
+                state.colorB = inputColorB.value;
+                applySettingsToUI();
+                resetMatch();
+                modalOverlay.classList.remove('open');
+            });
+            btnCloseSettings.addEventListener('click', () => modalOverlay.classList.remove('open'));
+            modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('open'); });
+
+            inputColorA.addEventListener('input', () => { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
+            inputColorB.addEventListener('input', () => { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
+
+            window.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return;
+                switch(e.key.toLowerCase()) {
+                    case 'a': capture('A'); e.preventDefault(); break;
+                    case 'b': capture('B'); e.preventDefault(); break;
+                    case ' ': toggleMatch(); e.preventDefault(); break;
+                    case 'r': resetMatch(); e.preventDefault(); break;
+                    case 's': modalOverlay.classList.toggle('open'); e.preventDefault(); break;
+                    case 'escape': modalOverlay.classList.remove('open'); break;
+                }
+            });
+
             applySettingsToUI();
             resetMatch();
-            modalOverlay.classList.remove('open');
-        });
-        btnCloseSettings.addEventListener('click', () => modalOverlay.classList.remove('open'));
-        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('open'); });
-
-        inputColorA.addEventListener('input', () => { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
-        inputColorB.addEventListener('input', () => { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
-
-        window.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-            switch(e.key.toLowerCase()) {
-                case 'a': capture('A'); e.preventDefault(); break;
-                case 'b': capture('B'); e.preventDefault(); break;
-                case ' ': toggleMatch(); e.preventDefault(); break;
-                case 'r': resetMatch(); e.preventDefault(); break;
-                case 's': modalOverlay.classList.toggle('open'); e.preventDefault(); break;
-                case 'escape': modalOverlay.classList.remove('open'); break;
-            }
-        });
-
-        applySettingsToUI();
-        resetMatch();
-        inputNameA.value = getColorName(inputColorA.value);
-        inputNameB.value = getColorName(inputColorB.value);
+            inputNameA.value = getColorName(inputColorA.value);
+            inputNameB.value = getColorName(inputColorB.value);
+        })();
     </script>
 </body>
 </html>
