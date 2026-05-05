@@ -195,26 +195,6 @@
             function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
             function stopSiren() { if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode = null; } }
 
-            function playTick() {
-                if (!state.audioLoaded) return;
-                try {
-                    var ctx = getAudioContext(), o = ctx.createOscillator(), g = ctx.createGain();
-                    o.type = 'square'; o.frequency.setValueAtTime(1200, ctx.currentTime);
-                    g.gain.setValueAtTime(0.7, ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.08);
-                    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.1);
-                } catch(e) {}
-            }
-
-            var tickTimer = null;
-            function startTickSound() {
-                stopTickSound();
-                if (state.matchActive && state.currentHolder && state.audioLoaded) {
-                    playTick();
-                    tickTimer = setInterval(function() { if (state.matchActive && state.currentHolder) playTick(); else stopTickSound(); }, 1000);
-                }
-            }
-            function stopTickSound() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
-
             function formatTime(sec) {
                 var m = Math.floor(sec/60), s = Math.floor(sec%60);
                 return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
@@ -255,7 +235,6 @@
                 if (state.ended || !state.matchActive || state.currentHolder===team) return;
                 state.currentHolder = team;
                 playCaptureSound(state.teamColors[team]);
-                startTickSound();
                 updateUI();
             }
 
@@ -268,7 +247,6 @@
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
-                if (state.currentHolder) startTickSound();
             }
 
             function startMatch() {
@@ -277,7 +255,7 @@
                 else proceedStartMatch();
             }
 
-            function pauseMatch() { state.matchActive = false; stopTickSound(); updateUI(); }
+            function pauseMatch() { state.matchActive = false; stopSiren(); updateUI(); }
             function toggleMatch() { if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
 
             function resetMatch() {
@@ -293,7 +271,7 @@
 
             function endMatchByTimer() {
                 state.matchActive = false; state.ended = true; state.currentHolder = null;
-                stopTickSound(); startSiren(); updateUI();
+                stopSiren(); startSiren(); updateUI();
             }
             function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); }
 
@@ -305,25 +283,26 @@
                 var prev = state.timeLeft;
                 state.timeLeft -= d;
 
-                // Звук через 5 минут после старта (когда прошло ровно 5 минут = осталось время_матча - 300)
-                var fiveMinThreshold = state.matchDuration - 300;
-                if (prev > fiveMinThreshold && state.timeLeft <= fiveMinThreshold && !state.fiveMinPlayed && state.timeLeft > 0) {
+                // 5 минут от начала матча (прошло ровно 300 секунд)
+                var elapsed = state.matchDuration - state.timeLeft;
+                var prevElapsed = state.matchDuration - prev;
+                if (prevElapsed < 300 && elapsed >= 300 && !state.fiveMinPlayed && state.timeLeft > 0) {
                     state.fiveMinPlayed = true;
                     if (state.buffers['start.mp3']) playBuffer(state.buffers['start.mp3'], false);
                 }
 
-                // Звук при достижении ровно 10:00 (600 секунд)
+                // 10:00 до конца
                 if (prev > 600 && state.timeLeft <= 600 && !state.tenMinPlayed && state.timeLeft > 0) {
                     state.tenMinPlayed = true;
                     if (state.buffers['siren3.mp3']) playBuffer(state.buffers['siren3.mp3'], false);
                 }
 
-                // Предупреждение за 5 минут
+                // 5 минут до конца
                 if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
                     state.warningPlayed = true;
                     if (state.buffers['siren1.mp3']) playBuffer(state.buffers['siren1.mp3'], false);
                 }
-                // Предупреждение за 1 минуту
+                // 1 минута до конца
                 if (prev > 60 && state.timeLeft <= 60 && !state.warning1minPlayed && state.timeLeft > 0) {
                     state.warning1minPlayed = true;
                     if (state.buffers['siren2.mp3']) playBuffer(state.buffers['siren2.mp3'], false);
