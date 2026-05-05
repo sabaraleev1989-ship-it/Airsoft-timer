@@ -257,18 +257,17 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW зарегистрирован'))
-                    .catch(err => console.log('Ошибка SW:', err));
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').then(function() {
+                    console.log('SW ok');
+                }).catch(function() {});
             });
         }
 
         (function() {
-            // ---------- СОСТОЯНИЕ ----------
-            const state = {
-                matchDuration: 10 * 60,
-                timeLeft: 10 * 60,
+            var state = {
+                matchDuration: 600,
+                timeLeft: 600,
                 matchActive: false,
                 ended: false,
                 currentHolder: null,
@@ -279,236 +278,187 @@
                 lastTick: null,
                 tickInterval: null,
                 audioCtx: null,
-                buffers: { siren: null, siren1: null, siren2: null },
-                captureSounds: {}, // ключ — HEX-цвет, значение — AudioBuffer
+                buffers: {},
+                captureSounds: {},
                 activeSirenNode: null,
                 audioLoaded: false,
                 warningPlayed: false,
                 warning1minPlayed: false,
-                prevTimeLeft: null,
+                prevTimeLeft: null
             };
 
-            // Карта цвет → звуковой файл
-            const COLOR_SOUND_MAP = {
-                // Красные оттенки → kras.mp3
-                'e63946': 'kras.mp3',
-                'ff0000': 'kras.mp3',
-                'cc0000': 'kras.mp3',
-                'dc143c': 'kras.mp3',
-                // Синие оттенки → sinie.mp3
-                '0066ff': 'sinie.mp3',
-                '0000ff': 'sinie.mp3',
-                '1d3557': 'sinie.mp3',
-                '4169e1': 'sinie.mp3',
-                // Зелёные оттенки → zelen.mp3
-                '2ecc71': 'zelen.mp3',
-                '00ff00': 'zelen.mp3',
-                '228b22': 'zelen.mp3',
-                // Жёлтые/оранжевые → zeltie.mp3
-                'f39c12': 'zeltie.mp3',
-                'ffa500': 'zeltie.mp3',
-                'ffff00': 'zeltie.mp3',
-                // Белые → bel.mp3
-                'ffffff': 'bel.mp3',
-                'f0f0f0': 'bel.mp3',
-                // Фиолетовые → sinie.mp3
-                '8a2be2': 'sinie.mp3',
-                '9400d3': 'sinie.mp3',
-            };
+            var mainArena = document.getElementById('mainArena');
+            var gameTimerDisplay = document.getElementById('gameTimerDisplay');
+            var btnPlayPause = document.getElementById('btnPlayPause');
+            var btnReset = document.getElementById('btnReset');
+            var btnSettings = document.getElementById('btnSettings');
+            var btnEndGame = document.getElementById('btnEndGame');
+            var modalOverlay = document.getElementById('modalOverlay');
+            var inputMatchMin = document.getElementById('inputMatchMin');
+            var inputTeamCount = document.getElementById('inputTeamCount');
+            var inputNameA = document.getElementById('inputNameA');
+            var inputColorA = document.getElementById('inputColorA');
+            var inputNameB = document.getElementById('inputNameB');
+            var inputColorB = document.getElementById('inputColorB');
+            var inputNameC = document.getElementById('inputNameC');
+            var inputColorC = document.getElementById('inputColorC');
+            var inputNameD = document.getElementById('inputNameD');
+            var inputColorD = document.getElementById('inputColorD');
+            var teamCPanel = document.getElementById('teamCPanel');
+            var teamDPanel = document.getElementById('teamDPanel');
+            var btnSaveSettings = document.getElementById('btnSaveSettings');
+            var btnCloseSettings = document.getElementById('btnCloseSettings');
+            var panels = {};
 
-            function getSoundFileForColor(hex) {
-                // Ищем точное совпадение
-                if (COLOR_SOUND_MAP[hex.toLowerCase()]) {
-                    return COLOR_SOUND_MAP[hex.toLowerCase()];
-                }
-                // Ищем ближайший цвет
-                const r = parseInt(hex.slice(1,3), 16);
-                const g = parseInt(hex.slice(3,5), 16);
-                const b = parseInt(hex.slice(5,7), 16);
-                
-                // Определяем доминирующий канал
-                if (r > g && r > b) return 'kras.mp3'; // красный доминирует
-                if (b > r && b > g) return 'sinie.mp3'; // синий доминирует
-                if (g > r && g > b) return 'zelen.mp3'; // зелёный доминирует
-                if (r > 200 && g > 200 && b < 100) return 'zeltie.mp3'; // жёлтый
-                if (r > 200 && g < 100 && b < 100) return 'kras.mp3'; // красный
-                if (r < 100 && g < 100 && b > 200) return 'sinie.mp3'; // синий
-                if (r < 100 && g > 200 && b < 100) return 'zelen.mp3'; // зелёный
-                if (r > 200 && g > 200 && b > 200) return 'bel.mp3'; // белый
-                
-                return 'kras.mp3'; // по умолчанию
-            }
-
-            // ---------- DOM ----------
-            const mainArena = document.getElementById('mainArena');
-            const gameTimerDisplay = document.getElementById('gameTimerDisplay');
-            const btnPlayPause = document.getElementById('btnPlayPause');
-            const btnReset = document.getElementById('btnReset');
-            const btnSettings = document.getElementById('btnSettings');
-            const btnEndGame = document.getElementById('btnEndGame');
-            const modalOverlay = document.getElementById('modalOverlay');
-            const inputMatchMin = document.getElementById('inputMatchMin');
-            const inputTeamCount = document.getElementById('inputTeamCount');
-            const inputNameA = document.getElementById('inputNameA');
-            const inputColorA = document.getElementById('inputColorA');
-            const inputNameB = document.getElementById('inputNameB');
-            const inputColorB = document.getElementById('inputColorB');
-            const inputNameC = document.getElementById('inputNameC');
-            const inputColorC = document.getElementById('inputColorC');
-            const inputNameD = document.getElementById('inputNameD');
-            const inputColorD = document.getElementById('inputColorD');
-            const teamCPanel = document.getElementById('teamCPanel');
-            const teamDPanel = document.getElementById('teamDPanel');
-            const btnSaveSettings = document.getElementById('btnSaveSettings');
-            const btnCloseSettings = document.getElementById('btnCloseSettings');
-
-            let panels = {};
-
-            // ---------- ЗВУКИ ----------
             function getAudioContext() {
                 if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
                 return state.audioCtx;
             }
-            async function loadAudioFile(url) {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const arrayBuffer = await response.arrayBuffer();
-                return await getAudioContext().decodeAudioData(arrayBuffer);
+
+            function loadAudioFile(url, callback) {
+                fetch(url).then(function(response) {
+                    if (!response.ok) return;
+                    return response.arrayBuffer();
+                }).then(function(buffer) {
+                    if (!buffer) return;
+                    return getAudioContext().decodeAudioData(buffer);
+                }).then(function(decoded) {
+                    if (decoded && callback) callback(url, decoded);
+                }).catch(function() {});
             }
-            async function preloadAudioFiles() {
+
+            function preloadAudioFiles() {
                 if (state.audioLoaded) return;
-                try {
-                    state.buffers.siren = await loadAudioFile('siren.mp3');
-                    state.buffers.siren1 = await loadAudioFile('siren1.mp3');
-                    state.buffers.siren2 = await loadAudioFile('siren2.mp3');
-                    
-                    // Загружаем все уникальные звуки команд
-                    const uniqueSounds = [...new Set(Object.values(COLOR_SOUND_MAP))];
-                    for (const file of uniqueSounds) {
-                        try {
-                            const buffer = await loadAudioFile(file);
-                            // Сохраняем буфер под именем файла
-                            if (!state.captureSounds[file]) {
-                                state.captureSounds[file] = buffer;
-                            }
-                        } catch(e) {
-                            console.log(`Звук ${file} не загружен`);
+                var files = ['siren.mp3', 'siren1.mp3', 'siren2.mp3', 'kras.mp3', 'sinie.mp3', 'zelen.mp3', 'zeltie.mp3', 'bel.mp3'];
+                files.forEach(function(file) {
+                    loadAudioFile(file, function(name, buffer) {
+                        state.buffers[name] = buffer;
+                        state.captureSounds[name] = buffer;
+                        if (Object.keys(state.buffers).length >= 8) {
+                            state.audioLoaded = true;
                         }
-                    }
-                    
+                    });
+                });
+                setTimeout(function() {
                     state.audioLoaded = true;
-                } catch (err) { console.warn('Аудио не загружены:', err); }
+                }, 3000);
             }
-            function playBuffer(buffer, loop = false) {
+
+            function playBuffer(buffer, loop) {
                 if (!buffer) return;
-                const ctx = getAudioContext();
-                const source = ctx.createBufferSource();
-                source.buffer = buffer; source.loop = loop;
+                var ctx = getAudioContext();
+                var source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.loop = !!loop;
                 source.connect(ctx.destination);
                 source.start(0);
                 return source;
             }
+
+            function getSoundForColor(hex) {
+                hex = hex.replace('#', '').toLowerCase();
+                var r = parseInt(hex.substr(0,2), 16);
+                var g = parseInt(hex.substr(2,2), 16);
+                var b = parseInt(hex.substr(4,2), 16);
+                if (r > g && r > b) return 'kras.mp3';
+                if (b > r && b > g) return 'sinie.mp3';
+                if (g > r && g > b) return 'zelen.mp3';
+                if (r > 200 && g > 200 && b < 100) return 'zeltie.mp3';
+                if (r > 200 && g > 200 && b > 200) return 'bel.mp3';
+                return 'kras.mp3';
+            }
+
             function playCaptureSound(teamColor) {
-                const soundFile = getSoundFileForColor(teamColor);
-                const buffer = state.captureSounds[soundFile];
-                if (buffer) {
-                    playBuffer(buffer, false);
+                if (!state.audioLoaded) return;
+                var file = getSoundForColor(teamColor);
+                var buffer = state.captureSounds[file];
+                if (buffer) playBuffer(buffer, false);
+            }
+
+            function startSiren() {
+                stopSiren();
+                if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true);
+            }
+            function stopSiren() {
+                if (state.activeSirenNode) {
+                    try { state.activeSirenNode.stop(); } catch(e) {}
+                    state.activeSirenNode = null;
                 }
             }
-            function startSiren() { stopSiren(); if (state.buffers.siren) state.activeSirenNode = playBuffer(state.buffers.siren, true); }
-            function stopSiren() {
-                if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode.disconnect(); state.activeSirenNode = null; }
-            }
+
             function playTick() {
                 if (!state.audioLoaded) return;
                 try {
-                    const ctx = getAudioContext(); const now = ctx.currentTime;
-                    const osc = ctx.createOscillator(); const gain = ctx.createGain();
-                    osc.type = 'square'; osc.frequency.setValueAtTime(1200, now);
-                    gain.gain.setValueAtTime(0.7, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-                    osc.connect(gain); gain.connect(ctx.destination);
-                    osc.start(now); osc.stop(now + 0.1);
-                } catch (e) {}
+                    var ctx = getAudioContext();
+                    var o = ctx.createOscillator();
+                    var g = ctx.createGain();
+                    o.type = 'square';
+                    o.frequency.setValueAtTime(1200, ctx.currentTime);
+                    g.gain.setValueAtTime(0.7, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+                    o.connect(g);
+                    g.connect(ctx.destination);
+                    o.start();
+                    o.stop(ctx.currentTime + 0.1);
+                } catch(e) {}
             }
-            let tickTimer = null;
+
+            var tickTimer = null;
             function startTickSound() {
                 stopTickSound();
-                if (state.matchActive && state.currentHolder !== null && state.audioLoaded) {
+                if (state.matchActive && state.currentHolder && state.audioLoaded) {
                     playTick();
-                    tickTimer = setInterval(() => {
-                        if (state.matchActive && state.currentHolder !== null) playTick();
+                    tickTimer = setInterval(function() {
+                        if (state.matchActive && state.currentHolder) playTick();
                         else stopTickSound();
                     }, 1000);
                 }
             }
-            function stopTickSound() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
-            async function unlockAndLoadAudio() {
-                if (state.audioLoaded) return;
-                const ctx = getAudioContext();
-                const buffer = ctx.createBuffer(1, 1, 22050);
-                const source = ctx.createBufferSource();
-                source.buffer = buffer; source.connect(ctx.destination);
-                source.start(0); source.stop(0);
-                await preloadAudioFiles();
+            function stopTickSound() {
+                if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
             }
 
-            // ---------- ОТРИСОВКА ПАНЕЛЕЙ ----------
             function renderPanels() {
                 mainArena.innerHTML = '';
-                const teams = [];
-                for (let i = 0; i < state.teamCount; i++) {
-                    teams.push(String.fromCharCode(65 + i));
-                }
-                teams.forEach(team => {
-                    const panel = document.createElement('div');
+                panels = {};
+                var teams = [];
+                for (var i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
+                teams.forEach(function(team) {
+                    var panel = document.createElement('div');
                     panel.className = 'team-panel inactive-for-start';
-                    panel.id = 'panel' + team;
                     panel.style.backgroundColor = state.teamColors[team];
-                    panel.innerHTML = `
-                        <div class="dim-overlay"></div>
-                        <div class="team-content">
-                            <div class="team-name">${state.teamNames[team]}</div>
-                            <div class="team-time" id="time${team}">00:00</div>
-                            <div class="team-status" id="status${team}">ОЖИДАЙТЕ СТАРТА</div>
-                        </div>
-                    `;
-                    panel.addEventListener('click', (e) => { e.preventDefault(); capture(team); });
-                    panel.addEventListener('touchend', (e) => { e.preventDefault(); capture(team); });
+                    panel.innerHTML = '<div class="dim-overlay"></div><div class="team-content"><div class="team-name">' + state.teamNames[team] + '</div><div class="team-time" id="time' + team + '">00:00</div><div class="team-status" id="status' + team + '">ОЖИДАЙТЕ СТАРТА</div></div>';
+                    panel.addEventListener('click', function(e) { e.preventDefault(); capture(team); });
+                    panel.addEventListener('touchend', function(e) { e.preventDefault(); capture(team); });
                     mainArena.appendChild(panel);
                     panels[team] = panel;
                 });
             }
 
             function updatePanelsUI() {
-                const teams = [];
-                for (let i = 0; i < state.teamCount; i++) {
-                    teams.push(String.fromCharCode(65 + i));
-                }
-                teams.forEach(team => {
-                    const panel = panels[team];
+                var teams = [];
+                for (var i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
+                teams.forEach(function(team) {
+                    var panel = panels[team];
                     if (!panel) return;
-                    const timeEl = panel.querySelector('.team-time');
-                    const statusEl = panel.querySelector('.team-status');
-                    const nameEl = panel.querySelector('.team-name');
+                    var timeEl = panel.querySelector('.team-time');
+                    var statusEl = panel.querySelector('.team-status');
+                    var nameEl = panel.querySelector('.team-name');
                     nameEl.textContent = state.teamNames[team];
                     panel.style.backgroundColor = state.teamColors[team];
                     timeEl.textContent = formatTime(state.times[team]);
-
-                    const isEnded = state.ended;
-                    const gameStarted = state.matchActive;
-                    let statusText = '';
-                    if (!gameStarted && !isEnded) statusText = 'ОЖИДАЙТЕ СТАРТА';
-                    else if (isEnded) {
-                        const maxTeam = getWinningTeam();
-                        statusText = (team === maxTeam && maxTeam) ? '🏆 ПОБЕДИТЕЛЬ' : '';
-                    } else if (state.currentHolder === team) statusText = '⚡ УДЕРЖАНИЕ';
-                    else statusText = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
-                    statusEl.textContent = statusText;
-
+                    var txt = 'ОЖИДАЙТЕ СТАРТА';
+                    if (state.ended) {
+                        var max = getWinningTeam();
+                        txt = (team === max && max) ? '🏆 ПОБЕДИТЕЛЬ' : '';
+                    } else if (state.matchActive) {
+                        txt = state.currentHolder === team ? '⚡ УДЕРЖАНИЕ' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                    }
+                    statusEl.textContent = txt;
                     panel.classList.remove('active-holder', 'dimmed', 'inactive-for-start');
-                    if (!gameStarted && !isEnded) panel.classList.add('inactive-for-start');
-                    if (gameStarted && !isEnded) {
+                    if (!state.matchActive && !state.ended) panel.classList.add('inactive-for-start');
+                    if (state.matchActive && !state.ended) {
                         if (state.currentHolder === team) panel.classList.add('active-holder');
                         else if (state.currentHolder) panel.classList.add('dimmed');
                     }
@@ -517,16 +467,16 @@
             }
 
             function getWinningTeam() {
-                const teams = [];
-                for (let i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
-                let maxTeam = null, maxTime = -1;
-                teams.forEach(t => { if (state.times[t] > maxTime) { maxTime = state.times[t]; maxTeam = t; } });
+                var teams = [];
+                for (var i = 0; i < state.teamCount; i++) teams.push(String.fromCharCode(65 + i));
+                var maxTeam = null, maxTime = -1;
+                teams.forEach(function(t) { if (state.times[t] > maxTime) { maxTime = state.times[t]; maxTeam = t; } });
                 return maxTeam;
             }
 
             function formatTime(sec) {
-                const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
-                return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                var m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+                return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
             }
 
             function updateUI() {
@@ -534,92 +484,111 @@
                 gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft <= 60 && state.timeLeft > 0);
                 updatePanelsUI();
                 btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
-                btnPlayPause.classList.toggle('active', state.matchActive);
-                document.documentElement.style.setProperty('--color-team-a', state.teamColors.A);
-                document.documentElement.style.setProperty('--color-team-b', state.teamColors.B);
-                document.documentElement.style.setProperty('--color-team-c', state.teamColors.C);
-                document.documentElement.style.setProperty('--color-team-d', state.teamColors.D);
+                if (state.matchActive) btnPlayPause.classList.add('active');
+                else btnPlayPause.classList.remove('active');
             }
 
             function capture(team) {
                 if (state.ended || !state.matchActive) return;
                 if (state.currentHolder === team) return;
                 state.currentHolder = team;
-                
-                // Проигрываем звук захвата, определяя его ПО ЦВЕТУ команды
-                const teamColor = state.teamColors[team];
-                playCaptureSound(teamColor);
-                
+                playCaptureSound(state.teamColors[team]);
                 startTickSound();
                 updateUI();
             }
 
             function proceedStartMatch() {
                 state.matchActive = true;
-                state.warningPlayed = false; state.warning1minPlayed = false;
+                state.warningPlayed = false;
+                state.warning1minPlayed = false;
                 state.prevTimeLeft = state.timeLeft;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
                 if (state.currentHolder) startTickSound();
             }
+
             function startMatch() {
                 if (state.ended) resetMatch();
                 if (!state.audioLoaded) {
-                    unlockAndLoadAudio().then(() => proceedStartMatch()).catch(() => proceedStartMatch());
-                } else proceedStartMatch();
+                    preloadAudioFiles();
+                    setTimeout(function() { proceedStartMatch(); }, 500);
+                } else {
+                    proceedStartMatch();
+                }
             }
-            function pauseMatch() { state.matchActive = false; state.lastTick = null; stopTickSound(); updateUI(); }
+
+            function pauseMatch() {
+                state.matchActive = false;
+                state.lastTick = null;
+                stopTickSound();
+                updateUI();
+            }
+
             function toggleMatch() {
                 if (state.ended) return;
                 state.matchActive ? pauseMatch() : startMatch();
             }
+
             function resetMatch() {
                 pauseMatch();
                 state.timeLeft = state.matchDuration;
-                state.ended = false; state.currentHolder = null;
+                state.ended = false;
+                state.currentHolder = null;
                 state.times = { A: 0, B: 0, C: 0, D: 0 };
-                state.warningPlayed = false; state.warning1minPlayed = false;
-                state.prevTimeLeft = state.timeLeft;
+                state.warningPlayed = false;
+                state.warning1minPlayed = false;
                 stopSiren();
                 if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
                 updateUI();
                 btnEndGame.style.display = 'none';
             }
+
             function endMatchByTimer() {
-                state.matchActive = false; state.ended = true; state.currentHolder = null;
-                stopTickSound(); startSiren();
+                state.matchActive = false;
+                state.ended = true;
+                state.currentHolder = null;
+                stopTickSound();
+                startSiren();
                 updateUI();
             }
+
             function finishGame() {
-                stopSiren(); state.ended = false; state.currentHolder = null;
+                stopSiren();
+                state.ended = false;
+                state.currentHolder = null;
                 updateUI();
             }
+
             function gameTick() {
-                const now = Date.now();
+                var now = Date.now();
                 if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
-                const delta = (now - state.lastTick) / 1000;
+                var delta = (now - state.lastTick) / 1000;
                 if (delta <= 0) return;
-                const prev = state.timeLeft;
+                var prev = state.timeLeft;
                 state.timeLeft -= delta;
                 if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
                     state.warningPlayed = true;
-                    if (state.buffers.siren1) playBuffer(state.buffers.siren1);
+                    if (state.buffers['siren1.mp3']) playBuffer(state.buffers['siren1.mp3'], false);
                 }
                 if (prev > 60 && state.timeLeft <= 60 && !state.warning1minPlayed && state.timeLeft > 0) {
                     state.warning1minPlayed = true;
-                    if (state.buffers.siren2) playBuffer(state.buffers.siren2);
+                    if (state.buffers['siren2.mp3']) playBuffer(state.buffers['siren2.mp3'], false);
                 }
-                if (state.timeLeft <= 0) { state.timeLeft = 0; state.lastTick = null; endMatchByTimer(); return; }
+                if (state.timeLeft <= 0) {
+                    state.timeLeft = 0;
+                    state.lastTick = null;
+                    endMatchByTimer();
+                    return;
+                }
                 if (state.currentHolder) state.times[state.currentHolder] += delta;
                 state.lastTick = now;
                 updateUI();
             }
 
-            // ---------- НАСТРОЙКИ ----------
             function openSettings() {
                 inputMatchMin.value = Math.round(state.matchDuration / 60);
-                inputTeamCount.value = state.teamCount.toString();
+                inputTeamCount.value = state.teamCount;
                 inputNameA.value = state.teamNames.A;
                 inputColorA.value = state.teamColors.A;
                 inputNameB.value = state.teamNames.B;
@@ -628,60 +597,89 @@
                 inputColorC.value = state.teamColors.C;
                 inputNameD.value = state.teamNames.D;
                 inputColorD.value = state.teamColors.D;
-                teamCPanel.classList.toggle('hidden', state.teamCount < 3);
-                teamDPanel.classList.toggle('hidden', state.teamCount < 4);
+                if (state.teamCount < 3) teamCPanel.classList.add('hidden');
+                else teamCPanel.classList.remove('hidden');
+                if (state.teamCount < 4) teamDPanel.classList.add('hidden');
+                else teamDPanel.classList.remove('hidden');
                 modalOverlay.classList.add('open');
             }
+
             function closeSettings() { modalOverlay.classList.remove('open'); }
+
             function saveSettings() {
-                let mins = parseInt(inputMatchMin.value, 10);
-                if (isNaN(mins) || mins<1) mins = 10;
+                var mins = parseInt(inputMatchMin.value, 10);
+                if (isNaN(mins) || mins < 1) mins = 10;
                 state.matchDuration = mins * 60;
                 state.teamCount = parseInt(inputTeamCount.value, 10);
-                state.teamNames.A = inputNameA.value.trim() || 'КОМАНДА A';
-                state.teamNames.B = inputNameB.value.trim() || 'КОМАНДА B';
-                if (state.teamCount >= 3) state.teamNames.C = inputNameC.value.trim() || 'КОМАНДА C';
-                if (state.teamCount >= 4) state.teamNames.D = inputNameD.value.trim() || 'КОМАНДА D';
+                state.teamNames.A = inputNameA.value.trim() || 'A';
+                state.teamNames.B = inputNameB.value.trim() || 'B';
+                if (state.teamCount >= 3) state.teamNames.C = inputNameC.value.trim() || 'C';
+                if (state.teamCount >= 4) state.teamNames.D = inputNameD.value.trim() || 'D';
                 state.teamColors.A = inputColorA.value;
                 state.teamColors.B = inputColorB.value;
                 if (state.teamCount >= 3) state.teamColors.C = inputColorC.value;
                 if (state.teamCount >= 4) state.teamColors.D = inputColorD.value;
-
                 localStorage.setItem('appSettings', JSON.stringify({
                     teamCount: state.teamCount,
                     names: state.teamNames,
                     colors: state.teamColors,
                     matchDuration: state.matchDuration
                 }));
-
                 renderPanels();
                 resetMatch();
                 closeSettings();
                 updateUI();
             }
+
             function loadSettings() {
-                const saved = localStorage.getItem('appSettings');
+                var saved = localStorage.getItem('appSettings');
                 if (saved) {
                     try {
-                        const data = JSON.parse(saved);
+                        var data = JSON.parse(saved);
                         state.teamCount = data.teamCount || 2;
                         state.teamNames = data.names || state.teamNames;
                         state.teamColors = data.colors || state.teamColors;
-                        state.matchDuration = data.matchDuration || state.matchDuration;
+                        state.matchDuration = data.matchDuration || 600;
                     } catch(e) {}
                 }
                 state.timeLeft = state.matchDuration;
             }
 
-            inputTeamCount.addEventListener('change', () => {
-                const val = parseInt(inputTeamCount.value, 10);
-                teamCPanel.classList.toggle('hidden', val < 3);
-                teamDPanel.classList.toggle('hidden', val < 4);
+            inputTeamCount.addEventListener('change', function() {
+                var val = parseInt(inputTeamCount.value, 10);
+                if (val < 3) teamCPanel.classList.add('hidden');
+                else teamCPanel.classList.remove('hidden');
+                if (val < 4) teamDPanel.classList.add('hidden');
+                else teamDPanel.classList.remove('hidden');
             });
 
-            function getColorName(hex) {
-                const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-                const colors = [
-                    {name:'Красные', r:220,g:50,b:50}, {name:'Синие', r:30,g:60,b:130},
-                    {name:'Зелёные', r:40,g:140,b:60}, {name:'Жёлтые', r:240,g:210,b:50},
-                    {name:'О
+            function init() {
+                loadSettings();
+                renderPanels();
+                updateUI();
+                btnPlayPause.addEventListener('click', toggleMatch);
+                btnReset.addEventListener('click', resetMatch);
+                btnSettings.addEventListener('click', openSettings);
+                btnEndGame.addEventListener('click', finishGame);
+                btnSaveSettings.addEventListener('click', saveSettings);
+                btnCloseSettings.addEventListener('click', closeSettings);
+                modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeSettings(); });
+                window.addEventListener('keydown', function(e) {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                    if (e.key === 'a') { capture('A'); e.preventDefault(); }
+                    if (e.key === 'b') { capture('B'); e.preventDefault(); }
+                    if (e.key === 'c' && state.teamCount >= 3) { capture('C'); e.preventDefault(); }
+                    if (e.key === 'd' && state.teamCount >= 4) { capture('D'); e.preventDefault(); }
+                    if (e.key === ' ') { toggleMatch(); e.preventDefault(); }
+                    if (e.key === 'r') { resetMatch(); e.preventDefault(); }
+                    if (e.key === 's') { openSettings(); e.preventDefault(); }
+                    if (e.key === 'Escape') { closeSettings(); }
+                });
+                preloadAudioFiles();
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
