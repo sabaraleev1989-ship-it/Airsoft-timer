@@ -122,6 +122,53 @@
             0%,100% { box-shadow: 0 0 40px rgba(255,255,255,0.6), inset 0 0 40px rgba(0,0,0,0.4); }
             50% { box-shadow: 0 0 70px rgba(255,255,255,0.8), inset 0 0 60px rgba(255,255,255,0.15); }
         }
+
+        /* Paywall */
+        .paywall-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(14px); z-index: 500;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.4s;
+        }
+        .paywall-overlay.active { opacity: 1; pointer-events: auto; }
+        .paywall-card {
+            background: var(--surface); border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 24px; padding: 28px 22px;
+            max-width: 400px; width: 90%; text-align: center;
+            display: flex; flex-direction: column; gap: 18px;
+        }
+        .paywall-card h3 { font-size: 1.4rem; font-weight: 700; }
+        .paywall-card p { font-size: 0.95rem; opacity: 0.85; line-height: 1.4; }
+        .device-id-box {
+            background: #0f0f17; border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 12px; padding: 10px; word-break: break-all;
+            font-family: monospace; font-size: 0.85rem; letter-spacing: 0.5px;
+            opacity: 0.9; user-select: all;
+        }
+        .paywall-input {
+            background: #0f0f17; border: 1px solid rgba(255,255,255,0.3);
+            color: #fff; padding: 12px 16px; border-radius: 16px;
+            font-size: 1.1rem; text-align: center; letter-spacing: 1px;
+            font-weight: 600; width: 100%; margin-top: 8px;
+        }
+        .paywall-input::placeholder { opacity: 0.5; }
+        .paywall-buttons {
+            display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+        }
+        .paywall-btn {
+            padding: 12px 24px; border-radius: 30px; border: none;
+            font-weight: 700; font-size: 1rem; letter-spacing: 1px;
+            cursor: pointer; text-transform: uppercase; transition: 0.2s;
+        }
+        .paywall-btn.primary {
+            background: var(--gold); color: #000; border: 2px solid var(--gold);
+        }
+        .paywall-btn.primary:hover { box-shadow: 0 0 25px var(--gold); }
+        .paywall-btn.secondary {
+            background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.5);
+        }
+        .paywall-status { font-size: 0.9rem; min-height: 20px; color: #e76f51; }
+
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(0,0,0,0.8);
             backdrop-filter: blur(8px); z-index: 100;
@@ -167,6 +214,24 @@
     </style>
 </head>
 <body>
+
+    <!-- Paywall -->
+    <div class="paywall-overlay" id="paywallOverlay">
+        <div class="paywall-card">
+            <h3>🔒 Пробный период истёк</h3>
+            <p>Для продолжения приобретите доступ.<br>Единоразовый платёж <strong>500 ₽</strong> навсегда.</p>
+            <p style="font-size:0.85rem;">Ваш идентификатор устройства:</p>
+            <div class="device-id-box" id="deviceIdDisplay"></div>
+            <a href="https://t.me/scorptimer_bot" target="_blank" class="paywall-btn primary" style="text-decoration:none; display:inline-block; width:100%;">💳 ОПЛАТИТЬ В TELEGRAM</a>
+            <input type="text" class="paywall-input" id="activationCodeInput" placeholder="Введите код активации" maxlength="16" autocomplete="off">
+            <div class="paywall-buttons">
+                <button class="paywall-btn primary" id="btnActivate">🔓 Активировать</button>
+                <button class="paywall-btn secondary" id="btnClosePaywall">✖ Закрыть</button>
+            </div>
+            <div class="paywall-status" id="paywallStatus"></div>
+        </div>
+    </div>
+
     <div class="topbar">
         <div class="game-timer-box">
             <span class="game-timer-label">⏱ МАТЧ</span>
@@ -228,444 +293,523 @@
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW зарегистрирован'))
-                    .catch(err => console.log('Ошибка SW:', err));
-            });
+        // ---------- МОНЕТИЗАЦИЯ (уникальные коды + free_ids.txt) ----------
+        const SECRET_KEY = 'ScorpTim3r_Secret!2026';
+        const TRIAL_DAYS = 1;
+
+        function getDeviceId() {
+            let id = localStorage.getItem('deviceId');
+            if (!id) {
+                id = 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 10);
+                localStorage.setItem('deviceId', id);
+            }
+            return id;
         }
 
-        (function() {
-            // DOM
-            const gameTimerDisplay = document.getElementById('gameTimerDisplay');
-            const panelA = document.getElementById('panelA');
-            const panelB = document.getElementById('panelB');
-            const timeAEl = document.getElementById('timeA');
-            const timeBEl = document.getElementById('timeB');
-            const nameAEl = document.getElementById('nameA');
-            const nameBEl = document.getElementById('nameB');
-            const statusAEl = document.getElementById('statusA');
-            const statusBEl = document.getElementById('statusB');
-            const btnPlayPause = document.getElementById('btnPlayPause');
-            const btnReset = document.getElementById('btnReset');
-            const btnSettings = document.getElementById('btnSettings');
-            const btnEndGame = document.getElementById('btnEndGame');
-            const modalOverlay = document.getElementById('modalOverlay');
-            const inputMatchMin = document.getElementById('inputMatchMin');
-            const inputNameA = document.getElementById('inputNameA');
-            const inputColorA = document.getElementById('inputColorA');
-            const inputNameB = document.getElementById('inputNameB');
-            const inputColorB = document.getElementById('inputColorB');
-            const btnSaveSettings = document.getElementById('btnSaveSettings');
-            const btnCloseSettings = document.getElementById('btnCloseSettings');
+        async function hmacSha256(key, message) {
+            const encoder = new TextEncoder();
+            const cryptoKey = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(key),
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign']
+            );
+            const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
+            return Array.from(new Uint8Array(signature))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+        }
 
-            // Состояние
-            const state = {
-                matchDuration: 10 * 60,
-                timeLeft: 10 * 60,
-                matchActive: false,
-                ended: false,
-                currentHolder: null,
-                timeA: 0,
-                timeB: 0,
-                lastTick: null,
-                tickInterval: null,
-                // Web Audio
-                audioCtx: null,
-                buffers: { siren: null, siren1: null, siren2: null },
-                activeSirenNode: null,
-                audioLoaded: false,
-                warningPlayed: false,      // 5-минутное
-                warning1minPlayed: false,  // 1-минутное
-                prevTimeLeft: null,
-                nameA: 'КРАСНЫЕ',
-                nameB: 'СИНИЕ',
-                colorA: '#e63946',
-                colorB: '#0066ff',
-            };
+        async function checkActivation() {
+            // 1. Уже активировано?
+            if (localStorage.getItem('activated') === 'true') return true;
 
-            // --- Загрузка и работа с аудио ---
-            function getAudioContext() {
-                if (!state.audioCtx) {
-                    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (state.audioCtx.state === 'suspended') {
-                    state.audioCtx.resume();
-                }
-                return state.audioCtx;
+            // 2. Пробный период (1 день)
+            const trialStart = localStorage.getItem('trialStart');
+            if (!trialStart) {
+                localStorage.setItem('trialStart', Date.now().toString());
+                return true;
             }
+            const elapsed = Date.now() - parseInt(trialStart);
+            if (elapsed < TRIAL_DAYS * 24 * 60 * 60 * 1000) return true;
 
-            async function loadAudioFile(url) {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const arrayBuffer = await response.arrayBuffer();
-                return await getAudioContext().decodeAudioData(arrayBuffer);
-            }
-
-            async function preloadAudioFiles() {
-                if (state.audioLoaded) return;
-                try {
-                    console.log('Загружаю аудиофайлы...');
-                    state.buffers.siren = await loadAudioFile('siren.mp3');
-                    state.buffers.siren1 = await loadAudioFile('siren1.mp3');
-                    state.buffers.siren2 = await loadAudioFile('siren2.mp3');
-                    state.audioLoaded = true;
-                    console.log('Аудиофайлы загружены и декодированы');
-                } catch (err) {
-                    console.error('Не удалось загрузить аудиофайлы:', err);
-                }
-            }
-
-            function playBuffer(buffer, loop = false) {
-                if (!buffer) return;
-                const ctx = getAudioContext();
-                const source = ctx.createBufferSource();
-                source.buffer = buffer;
-                source.loop = loop;
-                source.connect(ctx.destination);
-                source.start(0);
-                return source;
-            }
-
-            // Сирена (финал) – зацикленная
-            function startSiren() {
-                stopSiren();
-                if (!state.buffers.siren) {
-                    console.warn('Буфер сирены не загружен');
-                    return;
-                }
-                state.activeSirenNode = playBuffer(state.buffers.siren, true);
-            }
-
-            function stopSiren() {
-                if (state.activeSirenNode) {
-                    try { state.activeSirenNode.stop(); } catch(e) {}
-                    state.activeSirenNode.disconnect();
-                    state.activeSirenNode = null;
-                }
-            }
-
-            // Предупреждение (универсальное)
-            function playWarning(buffer, flagSetter) {
-                if (!buffer) return;
-                stopTickSound();
-                const source = playBuffer(buffer, false);
-                if (source) {
-                    source.onended = () => {
-                        if (state.matchActive && state.currentHolder !== null) {
-                            startTickSound();
-                        }
-                    };
-                }
-            }
-
-            // Тикание
-            function playTick() {
-                if (!state.audioLoaded) return;
-                try {
-                    const ctx = getAudioContext();
-                    const now = ctx.currentTime;
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'square';
-                    osc.frequency.setValueAtTime(1200, now);
-                    gain.gain.setValueAtTime(0.7, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(now);
-                    osc.stop(now + 0.1);
-                } catch (e) {}
-            }
-
-            let tickTimer = null;
-            function startTickSound() {
-                stopTickSound();
-                if (state.matchActive && state.currentHolder !== null && state.audioLoaded) {
-                    playTick();
-                    tickTimer = setInterval(() => {
-                        if (state.matchActive && state.currentHolder !== null) playTick();
-                        else stopTickSound();
-                    }, 1000);
-                }
-            }
-            function stopTickSound() {
-                if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
-            }
-
-            // Разблокировка аудио и загрузка файлов
-            async function unlockAndLoadAudio() {
-                if (state.audioLoaded) return;
-                const ctx = getAudioContext();
-                const buffer = ctx.createBuffer(1, 1, 22050);
-                const source = ctx.createBufferSource();
-                source.buffer = buffer;
-                source.connect(ctx.destination);
-                source.start(0);
-                source.stop(0);
-                await preloadAudioFiles();
-            }
-
-            function formatTime(sec) {
-                const m = Math.floor(sec / 60);
-                const s = Math.floor(sec % 60);
-                return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-            }
-
-            function getColorName(hex) {
-                const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-                const colors = [
-                    {name:'Красные', r:220,g:50,b:50}, {name:'Синие', r:30,g:60,b:130},
-                    {name:'Зелёные', r:40,g:140,b:60}, {name:'Жёлтые', r:240,g:210,b:50},
-                    {name:'Оранжевые', r:240,g:130,b:30}, {name:'Фиолетовые', r:130,g:50,b:180},
-                    {name:'Белые', r:230,g:230,b:230}, {name:'Чёрные', r:20,g:20,b:20},
-                    {name:'Розовые', r:240,g:120,b:160}, {name:'Голубые', r:70,g:180,b:210}
-                ];
-                let min = Infinity, name = 'Команда';
-                for (const c of colors) {
-                    const d = (r-c.r)**2 + (g-c.g)**2 + (b-c.b)**2;
-                    if (d < min) { min = d; name = c.name; }
-                }
-                return name;
-            }
-
-            function updateUI() {
-                gameTimerDisplay.textContent = formatTime(state.timeLeft);
-                gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft <= 60 && state.timeLeft > 0);
-                timeAEl.textContent = formatTime(state.timeA);
-                timeBEl.textContent = formatTime(state.timeB);
-
-                const holder = state.currentHolder;
-                const isEnded = state.ended;
-                const gameStarted = state.matchActive;
-
-                if (!gameStarted && !isEnded) {
-                    statusAEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
-                    statusBEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
-                } else if (isEnded) {
-                    statusAEl.textContent = state.timeA > state.timeB ? '🏆 ПОБЕДИТЕЛЬ' : '';
-                    statusBEl.textContent = state.timeB > state.timeA ? '🏆 ПОБЕДИТЕЛЬ' : '';
-                } else if (holder === 'A') {
-                    statusAEl.textContent = '⚡ УДЕРЖАНИЕ';
-                    statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
-                } else if (holder === 'B') {
-                    statusBEl.textContent = '⚡ УДЕРЖАНИЕ';
-                    statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
-                } else {
-                    statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
-                    statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
-                }
-
-                if (gameStarted && !isEnded) {
-                    panelA.classList.remove('inactive-for-start');
-                    panelB.classList.remove('inactive-for-start');
-                } else {
-                    panelA.classList.add('inactive-for-start');
-                    panelB.classList.add('inactive-for-start');
-                }
-
-                panelA.classList.remove('active-holder', 'dimmed');
-                panelB.classList.remove('active-holder', 'dimmed');
-                if (gameStarted && !isEnded) {
-                    if (holder === 'A') {
-                        panelA.classList.add('active-holder');
-                        panelB.classList.add('dimmed');
-                    } else if (holder === 'B') {
-                        panelB.classList.add('active-holder');
-                        panelA.classList.add('dimmed');
+            // 3. Проверка удалённого файла free_ids.txt (друзья)
+            try {
+                const response = await fetch('free_ids.txt');
+                if (response.ok) {
+                    const text = await response.text();
+                    const allowedIds = text.split('\n')
+                        .map(id => id.trim())
+                        .filter(id => id.length > 0);
+                    if (allowedIds.includes(getDeviceId())) {
+                        localStorage.setItem('activated', 'true');
+                        return true;
                     }
                 }
-                btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
-                btnPlayPause.classList.toggle('active', state.matchActive);
-                btnEndGame.style.display = state.ended ? 'flex' : 'none';
+            } catch (e) {
+                console.warn('Не удалось загрузить free_ids.txt:', e);
             }
 
-            function applySettingsToUI() {
-                document.documentElement.style.setProperty('--color-team-a', state.colorA);
-                document.documentElement.style.setProperty('--color-team-b', state.colorB);
-                panelA.style.backgroundColor = state.colorA;
-                panelB.style.backgroundColor = state.colorB;
-                nameAEl.textContent = state.nameA;
-                nameBEl.textContent = state.nameB;
-                updateUI();
+            // 4. Если ни одно условие не выполнено – требуется оплата
+            return false;
+        }
+
+        async function activateDevice(inputCode) {
+            // Платная активация через HMAC
+            const deviceId = getDeviceId();
+            const expectedCode = (await hmacSha256(SECRET_KEY, deviceId)).substring(0, 16).toUpperCase();
+            if (inputCode.trim().toUpperCase() === expectedCode) {
+                localStorage.setItem('activated', 'true');
+                return true;
+            }
+            return false;
+        }
+
+        // ---------- DOM и состояние ----------
+        const paywallOverlay = document.getElementById('paywallOverlay');
+        const deviceIdDisplay = document.getElementById('deviceIdDisplay');
+        const activationCodeInput = document.getElementById('activationCodeInput');
+        const btnActivate = document.getElementById('btnActivate');
+        const btnClosePaywall = document.getElementById('btnClosePaywall');
+        const paywallStatus = document.getElementById('paywallStatus');
+
+        const gameTimerDisplay = document.getElementById('gameTimerDisplay');
+        const panelA = document.getElementById('panelA');
+        const panelB = document.getElementById('panelB');
+        const timeAEl = document.getElementById('timeA');
+        const timeBEl = document.getElementById('timeB');
+        const nameAEl = document.getElementById('nameA');
+        const nameBEl = document.getElementById('nameB');
+        const statusAEl = document.getElementById('statusA');
+        const statusBEl = document.getElementById('statusB');
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const btnReset = document.getElementById('btnReset');
+        const btnSettings = document.getElementById('btnSettings');
+        const btnEndGame = document.getElementById('btnEndGame');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const inputMatchMin = document.getElementById('inputMatchMin');
+        const inputNameA = document.getElementById('inputNameA');
+        const inputColorA = document.getElementById('inputColorA');
+        const inputNameB = document.getElementById('inputNameB');
+        const inputColorB = document.getElementById('inputColorB');
+        const btnSaveSettings = document.getElementById('btnSaveSettings');
+        const btnCloseSettings = document.getElementById('btnCloseSettings');
+
+        let appLocked = false;
+
+        const state = {
+            matchDuration: 10 * 60,
+            timeLeft: 10 * 60,
+            matchActive: false,
+            ended: false,
+            currentHolder: null,
+            timeA: 0,
+            timeB: 0,
+            lastTick: null,
+            tickInterval: null,
+            audioCtx: null,
+            buffers: { siren: null, siren1: null, siren2: null },
+            activeSirenNode: null,
+            audioLoaded: false,
+            warningPlayed: false,
+            warning1minPlayed: false,
+            prevTimeLeft: null,
+            nameA: 'КРАСНЫЕ',
+            nameB: 'СИНИЕ',
+            colorA: '#e63946',
+            colorB: '#0066ff',
+        };
+
+        // ---------- Звуковой движок ----------
+        function getAudioContext() {
+            if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+            return state.audioCtx;
+        }
+
+        async function loadAudioFile(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const arrayBuffer = await response.arrayBuffer();
+            return await getAudioContext().decodeAudioData(arrayBuffer);
+        }
+
+        async function preloadAudioFiles() {
+            if (state.audioLoaded) return;
+            try {
+                state.buffers.siren = await loadAudioFile('siren.mp3');
+                state.buffers.siren1 = await loadAudioFile('siren1.mp3');
+                state.buffers.siren2 = await loadAudioFile('siren2.mp3');
+                state.audioLoaded = true;
+            } catch (err) {
+                console.warn('Не удалось загрузить аудио:', err);
+            }
+        }
+
+        function playBuffer(buffer, loop = false) {
+            if (!buffer) return;
+            const ctx = getAudioContext();
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.loop = loop;
+            source.connect(ctx.destination);
+            source.start(0);
+            return source;
+        }
+
+        function startSiren() {
+            stopSiren();
+            if (!state.buffers.siren) return;
+            state.activeSirenNode = playBuffer(state.buffers.siren, true);
+        }
+
+        function stopSiren() {
+            if (state.activeSirenNode) {
+                try { state.activeSirenNode.stop(); } catch(e) {}
+                state.activeSirenNode.disconnect();
+                state.activeSirenNode = null;
+            }
+        }
+
+        function playTick() {
+            if (!state.audioLoaded) return;
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(1200, now);
+                gain.gain.setValueAtTime(0.7, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } catch (e) {}
+        }
+
+        let tickTimer = null;
+        function startTickSound() {
+            stopTickSound();
+            if (state.matchActive && state.currentHolder !== null && state.audioLoaded) {
+                playTick();
+                tickTimer = setInterval(() => {
+                    if (state.matchActive && state.currentHolder !== null) playTick();
+                    else stopTickSound();
+                }, 1000);
+            }
+        }
+        function stopTickSound() {
+            if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+        }
+
+        async function unlockAndLoadAudio() {
+            if (state.audioLoaded) return;
+            const ctx = getAudioContext();
+            const buffer = ctx.createBuffer(1, 1, 22050);
+            const source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+            source.start(0);
+            source.stop(0);
+            await preloadAudioFiles();
+        }
+
+        // ---------- Логика игры ----------
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+
+        function getColorName(hex) {
+            const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+            const colors = [
+                {name:'Красные', r:220,g:50,b:50}, {name:'Синие', r:30,g:60,b:130},
+                {name:'Зелёные', r:40,g:140,b:60}, {name:'Жёлтые', r:240,g:210,b:50},
+                {name:'Оранжевые', r:240,g:130,b:30}, {name:'Фиолетовые', r:130,g:50,b:180},
+                {name:'Белые', r:230,g:230,b:230}, {name:'Чёрные', r:20,g:20,b:20},
+                {name:'Розовые', r:240,g:120,b:160}, {name:'Голубые', r:70,g:180,b:210}
+            ];
+            let min = Infinity, name = 'Команда';
+            for (const c of colors) {
+                const d = (r-c.r)**2 + (g-c.g)**2 + (b-c.b)**2;
+                if (d < min) { min = d; name = c.name; }
+            }
+            return name;
+        }
+
+        function updateUI() {
+            gameTimerDisplay.textContent = formatTime(state.timeLeft);
+            gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft <= 60 && state.timeLeft > 0);
+            timeAEl.textContent = formatTime(state.timeA);
+            timeBEl.textContent = formatTime(state.timeB);
+
+            const holder = state.currentHolder;
+            const isEnded = state.ended;
+            const gameStarted = state.matchActive;
+
+            if (!gameStarted && !isEnded) {
+                statusAEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
+                statusBEl.textContent = 'ОЖИДАЙТЕ СТАРТА';
+            } else if (isEnded) {
+                statusAEl.textContent = state.timeA > state.timeB ? '🏆 ПОБЕДИТЕЛЬ' : '';
+                statusBEl.textContent = state.timeB > state.timeA ? '🏆 ПОБЕДИТЕЛЬ' : '';
+            } else if (holder === 'A') {
+                statusAEl.textContent = '⚡ УДЕРЖАНИЕ';
+                statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+            } else if (holder === 'B') {
+                statusBEl.textContent = '⚡ УДЕРЖАНИЕ';
+                statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+            } else {
+                statusAEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                statusBEl.textContent = 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
             }
 
-            function capture(team) {
-                if (state.ended || !state.matchActive) return;
-                if (state.currentHolder === team) return;
-                state.currentHolder = team;
-                startTickSound();
-                try {
-                    const ctx = getAudioContext();
-                    const o = ctx.createOscillator();
-                    const g = ctx.createGain();
-                    o.type = 'triangle';
-                    o.frequency.setValueAtTime(team==='A'?800:600, ctx.currentTime);
-                    g.gain.setValueAtTime(0.6, ctx.currentTime);
-                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.2);
-                    o.connect(g); g.connect(ctx.destination);
-                    o.start(); o.stop(ctx.currentTime+0.22);
-                } catch(e) {}
-                updateUI();
+            if (gameStarted && !isEnded) {
+                panelA.classList.remove('inactive-for-start');
+                panelB.classList.remove('inactive-for-start');
+            } else {
+                panelA.classList.add('inactive-for-start');
+                panelB.classList.add('inactive-for-start');
             }
 
-            function startMatch() {
-                if (state.ended) resetMatch();
-                if (!state.audioLoaded) {
-                    unlockAndLoadAudio().then(() => proceedStartMatch())
-                        .catch(() => proceedStartMatch());
-                } else {
-                    proceedStartMatch();
+            panelA.classList.remove('active-holder', 'dimmed');
+            panelB.classList.remove('active-holder', 'dimmed');
+            if (gameStarted && !isEnded) {
+                if (holder === 'A') {
+                    panelA.classList.add('active-holder');
+                    panelB.classList.add('dimmed');
+                } else if (holder === 'B') {
+                    panelB.classList.add('active-holder');
+                    panelA.classList.add('dimmed');
                 }
             }
+            btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
+            btnPlayPause.classList.toggle('active', state.matchActive);
+            btnEndGame.style.display = state.ended ? 'flex' : 'none';
+        }
 
-            function proceedStartMatch() {
-                state.matchActive = true;
-                state.warningPlayed = false;
-                state.warning1minPlayed = false;
-                state.prevTimeLeft = state.timeLeft;
-                state.lastTick = Date.now();
-                if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
-                updateUI();
-                if (state.currentHolder) startTickSound();
+        function applySettingsToUI() {
+            document.documentElement.style.setProperty('--color-team-a', state.colorA);
+            document.documentElement.style.setProperty('--color-team-b', state.colorB);
+            panelA.style.backgroundColor = state.colorA;
+            panelB.style.backgroundColor = state.colorB;
+            nameAEl.textContent = state.nameA;
+            nameBEl.textContent = state.nameB;
+            updateUI();
+        }
+
+        function capture(team) {
+            if (state.ended || !state.matchActive) return;
+            if (state.currentHolder === team) return;
+            state.currentHolder = team;
+            startTickSound();
+            try {
+                const ctx = getAudioContext();
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.type = 'triangle';
+                o.frequency.setValueAtTime(team==='A'?800:600, ctx.currentTime);
+                g.gain.setValueAtTime(0.6, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.2);
+                o.connect(g); g.connect(ctx.destination);
+                o.start(); o.stop(ctx.currentTime+0.22);
+            } catch(e) {}
+            updateUI();
+        }
+
+        function proceedStartMatch() {
+            state.matchActive = true;
+            state.warningPlayed = false;
+            state.warning1minPlayed = false;
+            state.prevTimeLeft = state.timeLeft;
+            state.lastTick = Date.now();
+            if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
+            updateUI();
+            if (state.currentHolder) startTickSound();
+        }
+
+        function startMatch() {
+            if (appLocked) {
+                paywallOverlay.classList.add('active');
+                return;
+            }
+            if (state.ended) resetMatch();
+            if (!state.audioLoaded) {
+                unlockAndLoadAudio().then(() => proceedStartMatch()).catch(() => proceedStartMatch());
+            } else {
+                proceedStartMatch();
+            }
+        }
+
+        function pauseMatch() {
+            state.matchActive = false;
+            state.lastTick = null;
+            stopTickSound();
+            updateUI();
+        }
+
+        function toggleMatch() {
+            if (appLocked) {
+                paywallOverlay.classList.add('active');
+                return;
+            }
+            if (state.ended) return;
+            state.matchActive ? pauseMatch() : startMatch();
+        }
+
+        function resetMatch() {
+            pauseMatch();
+            state.timeLeft = state.matchDuration;
+            state.ended = false;
+            state.currentHolder = null;
+            state.timeA = 0; state.timeB = 0;
+            state.warningPlayed = false;
+            state.warning1minPlayed = false;
+            state.prevTimeLeft = state.timeLeft;
+            stopSiren();
+            stopTickSound();
+            if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
+            updateUI();
+            btnEndGame.style.display = 'none';
+        }
+
+        function endMatchByTimer() {
+            state.matchActive = false;
+            state.ended = true;
+            state.currentHolder = null;
+            stopTickSound();
+            startSiren();
+            updateUI();
+            btnEndGame.style.display = 'flex';
+        }
+
+        function finishGame() {
+            stopSiren();
+            state.ended = false;
+            state.currentHolder = null;
+            updateUI();
+            btnEndGame.style.display = 'none';
+        }
+
+        function gameTick() {
+            const now = Date.now();
+            if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
+            const delta = (now - state.lastTick) / 1000;
+            if (delta <= 0) return;
+
+            const prev = state.timeLeft;
+            state.timeLeft -= delta;
+
+            if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
+                state.warningPlayed = true;
+                if (state.buffers.siren1) playBuffer(state.buffers.siren1);
+            }
+            if (prev > 60 && state.timeLeft <= 60 && !state.warning1minPlayed && state.timeLeft > 0) {
+                state.warning1minPlayed = true;
+                if (state.buffers.siren2) playBuffer(state.buffers.siren2);
             }
 
-            function pauseMatch() {
-                state.matchActive = false;
+            if (state.timeLeft <= 0) {
+                state.timeLeft = 0;
                 state.lastTick = null;
-                stopTickSound();
-                updateUI();
+                endMatchByTimer();
+                return;
             }
 
-            function toggleMatch() {
-                if (state.ended) return;
-                state.matchActive ? pauseMatch() : startMatch();
+            if (state.currentHolder === 'A') state.timeA += delta;
+            else if (state.currentHolder === 'B') state.timeB += delta;
+            state.lastTick = now;
+            updateUI();
+        }
+
+        // ---------- Paywall логика ----------
+        (async function initPaywall() {
+            const isActivated = await checkActivation();
+            if (!isActivated) {
+                appLocked = true;
+                deviceIdDisplay.textContent = getDeviceId();
+                paywallOverlay.classList.add('active');
+            } else {
+                appLocked = false;
+                paywallOverlay.classList.remove('active');
             }
 
-            function resetMatch() {
-                pauseMatch();
-                state.timeLeft = state.matchDuration;
-                state.ended = false;
-                state.currentHolder = null;
-                state.timeA = 0; state.timeB = 0;
-                state.warningPlayed = false;
-                state.warning1minPlayed = false;
-                state.prevTimeLeft = state.timeLeft;
-                stopSiren();
-                stopTickSound();
-                if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
-                updateUI();
-                btnEndGame.style.display = 'none';
-            }
-
-            function endMatchByTimer() {
-                state.matchActive = false;
-                state.ended = true;
-                state.currentHolder = null;
-                stopTickSound();
-                startSiren();
-                updateUI();
-                btnEndGame.style.display = 'flex';
-            }
-
-            function finishGame() {
-                stopSiren();
-                state.ended = false;
-                state.currentHolder = null;
-                updateUI();
-                btnEndGame.style.display = 'none';
-            }
-
-            function gameTick() {
-                const now = Date.now();
-                if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
-                const delta = (now - state.lastTick) / 1000;
-                if (delta <= 0) return;
-
-                const prev = state.timeLeft;
-                state.timeLeft -= delta;
-
-                // Проверка 5 минут
-                if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) {
-                    state.warningPlayed = true;
-                    if (state.buffers.siren1) playWarning(state.buffers.siren1);
-                }
-
-                // Проверка 1 минуты
-                if (prev > 60 && state.timeLeft <= 60 && !state.warning1minPlayed && state.timeLeft > 0) {
-                    state.warning1minPlayed = true;
-                    if (state.buffers.siren2) playWarning(state.buffers.siren2);
-                }
-
-                if (state.timeLeft <= 0) {
-                    state.timeLeft = 0;
-                    state.lastTick = null;
-                    endMatchByTimer();
-                    return;
-                }
-
-                if (state.currentHolder === 'A') state.timeA += delta;
-                else if (state.currentHolder === 'B') state.timeB += delta;
-                state.lastTick = now;
-                updateUI();
-            }
-
-            function openSettings() {
-                inputMatchMin.value = Math.round(state.matchDuration / 60);
-                inputNameA.value = state.nameA;
-                inputColorA.value = state.colorA;
-                inputNameB.value = state.nameB;
-                inputColorB.value = state.colorB;
-                modalOverlay.classList.add('open');
-            }
-            function closeSettings() { modalOverlay.classList.remove('open'); }
-            function saveSettings() {
-                let mins = parseInt(inputMatchMin.value, 10);
-                if (isNaN(mins) || mins<1) mins=10;
-                state.matchDuration = mins*60;
-                state.nameA = inputNameA.value.trim() || 'КОМАНДА A';
-                state.nameB = inputNameB.value.trim() || 'КОМАНДА B';
-                state.colorA = inputColorA.value;
-                state.colorB = inputColorB.value;
-                applySettingsToUI();
-                resetMatch();
-                closeSettings();
-            }
-
-            inputColorA.addEventListener('input', () => { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
-            inputColorB.addEventListener('input', () => { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
-
-            panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
-            panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
-            panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
-            panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
-
-            btnPlayPause.addEventListener('click', toggleMatch);
-            btnReset.addEventListener('click', resetMatch);
-            btnSettings.addEventListener('click', openSettings);
-            btnEndGame.addEventListener('click', finishGame);
-            btnSaveSettings.addEventListener('click', saveSettings);
-            btnCloseSettings.addEventListener('click', closeSettings);
-            modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeSettings(); });
-
-            window.addEventListener('keydown', (e) => {
-                if (e.target.tagName === 'INPUT') return;
-                switch(e.key.toLowerCase()) {
-                    case 'a': capture('A'); e.preventDefault(); break;
-                    case 'b': capture('B'); e.preventDefault(); break;
-                    case ' ': toggleMatch(); e.preventDefault(); break;
-                    case 'r': resetMatch(); e.preventDefault(); break;
-                    case 's': openSettings(); e.preventDefault(); break;
-                    case 'escape': closeSettings(); break;
+            btnActivate.addEventListener('click', async () => {
+                const code = activationCodeInput.value.trim();
+                if (!code) { paywallStatus.textContent = 'Введите код'; return; }
+                const success = await activateDevice(code);
+                if (success) {
+                    appLocked = false;
+                    paywallOverlay.classList.remove('active');
+                    paywallStatus.textContent = '';
+                } else {
+                    paywallStatus.textContent = 'Неверный код активации';
                 }
             });
 
+            btnClosePaywall.addEventListener('click', () => {
+                paywallOverlay.classList.remove('active');
+                if (appLocked) {
+                    setTimeout(() => { if (appLocked) paywallOverlay.classList.add('active'); }, 2000);
+                }
+            });
+        })();
+
+        // ---------- Обработчики интерфейса ----------
+        panelA.addEventListener('click', (e) => { e.preventDefault(); capture('A'); });
+        panelA.addEventListener('touchend', (e) => { e.preventDefault(); capture('A'); });
+        panelB.addEventListener('click', (e) => { e.preventDefault(); capture('B'); });
+        panelB.addEventListener('touchend', (e) => { e.preventDefault(); capture('B'); });
+
+        btnPlayPause.addEventListener('click', toggleMatch);
+        btnReset.addEventListener('click', resetMatch);
+        btnSettings.addEventListener('click', () => {
+            inputMatchMin.value = Math.round(state.matchDuration / 60);
+            inputNameA.value = state.nameA;
+            inputColorA.value = state.colorA;
+            inputNameB.value = state.nameB;
+            inputColorB.value = state.colorB;
+            modalOverlay.classList.add('open');
+        });
+        btnEndGame.addEventListener('click', finishGame);
+        btnSaveSettings.addEventListener('click', () => {
+            let mins = parseInt(inputMatchMin.value, 10);
+            if (isNaN(mins) || mins<1) mins=10;
+            state.matchDuration = mins*60;
+            state.nameA = inputNameA.value.trim() || 'КОМАНДА A';
+            state.nameB = inputNameB.value.trim() || 'КОМАНДА B';
+            state.colorA = inputColorA.value;
+            state.colorB = inputColorB.value;
             applySettingsToUI();
             resetMatch();
-            inputNameA.value = getColorName(inputColorA.value);
-            inputNameB.value = getColorName(inputColorB.value);
-        })();
+            modalOverlay.classList.remove('open');
+        });
+        btnCloseSettings.addEventListener('click', () => modalOverlay.classList.remove('open'));
+        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) modalOverlay.classList.remove('open'); });
+
+        inputColorA.addEventListener('input', () => { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
+        inputColorB.addEventListener('input', () => { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            switch(e.key.toLowerCase()) {
+                case 'a': capture('A'); e.preventDefault(); break;
+                case 'b': capture('B'); e.preventDefault(); break;
+                case ' ': toggleMatch(); e.preventDefault(); break;
+                case 'r': resetMatch(); e.preventDefault(); break;
+                case 's': modalOverlay.classList.toggle('open'); e.preventDefault(); break;
+                case 'escape': modalOverlay.classList.remove('open'); break;
+            }
+        });
+
+        applySettingsToUI();
+        resetMatch();
+        inputNameA.value = getColorName(inputColorA.value);
+        inputNameB.value = getColorName(inputColorB.value);
     </script>
 </body>
 </html>
