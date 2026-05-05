@@ -1,11 +1,12 @@
-const CACHE_NAME = 'strikeball-v6';
+const CACHE_NAME = 'strikeball-v7';
 const urlsToCache = [
     'index.html',
     'manifest.json',
     'logo3.png',
     'siren.mp3',
     'siren1.mp3',
-    'siren2.mp3'
+    'siren2.mp3',
+    'free_ids.txt'
 ];
 
 self.addEventListener('install', event => {
