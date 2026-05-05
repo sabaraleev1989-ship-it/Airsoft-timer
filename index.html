@@ -118,7 +118,7 @@
                 teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ОРАНЖЕВЫЕ' },
                 teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
                 lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
-                audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false
+                audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false
             };
 
             var mainArena = document.getElementById('mainArena');
@@ -158,7 +158,7 @@
 
             function preloadAudioFiles() {
                 if (state.audioLoaded) return;
-                var files = ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'];
+                var files = ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'];
                 files.forEach(function(f) {
                     loadAudioFile(f, function(name, buf) { state.buffers[name] = buf; });
                 });
@@ -264,6 +264,7 @@
                 state.warningPlayed = false;
                 state.warning1minPlayed = false;
                 state.tenMinPlayed = false;
+                state.fiveMinPlayed = false;
                 state.lastTick = Date.now();
                 if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
                 updateUI();
@@ -284,7 +285,7 @@
                 state.timeLeft = state.matchDuration;
                 state.ended = false; state.currentHolder = null;
                 state.times = { A:0,B:0,C:0,D:0 };
-                state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false;
+                state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false;
                 stopSiren();
                 if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
                 updateUI(); btnEndGame.style.display = 'none';
@@ -303,6 +304,13 @@
                 if (d <= 0) return;
                 var prev = state.timeLeft;
                 state.timeLeft -= d;
+
+                // Звук через 5 минут после старта (когда прошло ровно 5 минут = осталось время_матча - 300)
+                var fiveMinThreshold = state.matchDuration - 300;
+                if (prev > fiveMinThreshold && state.timeLeft <= fiveMinThreshold && !state.fiveMinPlayed && state.timeLeft > 0) {
+                    state.fiveMinPlayed = true;
+                    if (state.buffers['start.mp3']) playBuffer(state.buffers['start.mp3'], false);
+                }
 
                 // Звук при достижении ровно 10:00 (600 секунд)
                 if (prev > 600 && state.timeLeft <= 600 && !state.tenMinPlayed && state.timeLeft > 0) {
