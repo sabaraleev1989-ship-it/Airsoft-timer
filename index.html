@@ -26,7 +26,6 @@
         .game-timer-label { font-size: 0.75rem; letter-spacing: 1.5px; color: #aaa; font-weight: 600; text-transform: uppercase; }
         .game-timer-display { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.3); min-width: 72px; text-align: center; }
         .game-timer-display.warning { color: #e76f51; animation: pulse-warn 0.7s infinite; }
-        .trial-indicator { font-size: 0.65rem; opacity: 0.7; color: #ccc; margin-left: 8px; white-space: nowrap; }
         .btn-icon { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; font-size: 1.3rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; backdrop-filter: blur(4px); flex-shrink: 0; }
         .btn-icon:hover { background: rgba(255,255,255,0.2); }
         .btn-icon:active { transform: scale(0.92); }
@@ -47,28 +46,6 @@
         .team-panel.active-holder { animation: activeGlow 1.2s infinite; border-color: rgba(255, 255, 255, 0.7); }
         @keyframes activeGlow { 0%,100% { box-shadow: 0 0 30px rgba(255,255,255,0.6), inset 0 0 30px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 60px rgba(255,255,255,0.8), inset 0 0 50px rgba(255,255,255,0.15); } }
 
-        /* Paywall */
-        .paywall-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(14px); z-index: 500; display: flex; align-items: center; justify-content: center; opacity: 1; pointer-events: auto; }
-        .paywall-overlay.hidden { opacity: 0; pointer-events: none; }
-        .paywall-card { background: var(--surface); border: 1px solid rgba(255,255,255,0.2); border-radius: 24px; padding: 28px 22px; max-width: 400px; width: 90%; text-align: center; display: flex; flex-direction: column; gap: 18px; }
-        .paywall-card h3 { font-size: 1.4rem; font-weight: 700; }
-        .paywall-card p { font-size: 0.95rem; opacity: 0.85; line-height: 1.4; }
-        .device-id-box { background: #0f0f17; border: 1px solid rgba(255,255,255,0.3); border-radius: 12px; padding: 10px; word-break: break-all; font-family: monospace; font-size: 0.85rem; letter-spacing: 0.5px; opacity: 0.9; user-select: all; }
-        .paywall-input { background: #0f0f17; border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 12px 16px; border-radius: 16px; font-size: 1.1rem; text-align: center; letter-spacing: 1px; font-weight: 600; width: 100%; margin-top: 8px; }
-        .paywall-input::placeholder { opacity: 0.5; }
-        .paywall-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-        .paywall-btn { padding: 12px 24px; border-radius: 30px; border: none; font-weight: 700; font-size: 1rem; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        .paywall-btn.primary { background: var(--gold); color: #000; border: 2px solid var(--gold); text-decoration: none; display: inline-block; width: 100%; }
-        .paywall-btn.primary:hover { box-shadow: 0 0 25px var(--gold); }
-        .paywall-btn.secondary { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.5); }
-        .paywall-status { font-size: 0.9rem; min-height: 20px; color: #e76f51; }
-
-        .trial-info-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 600; display: flex; align-items: center; justify-content: center; opacity: 1; pointer-events: auto; }
-        .trial-info-overlay.hidden { opacity: 0; pointer-events: none; }
-        .trial-info-card { background: var(--surface); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 24px 20px; max-width: 350px; width: 85%; text-align: center; display: flex; flex-direction: column; gap: 16px; }
-        .trial-info-card h3 { font-size: 1.3rem; font-weight: 700; }
-        .trial-info-card p { font-size: 0.95rem; opacity: 0.9; line-height: 1.4; }
-
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
         .modal { background: var(--surface); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 24px 20px; max-width: 450px; width: 90%; display: flex; flex-direction: column; gap: 16px; }
@@ -80,6 +57,9 @@
         .setting-row input[type="text"]:read-only { opacity: 0.7; background: #1a1a24; }
         .setting-row input[type="color"] { width: 50px; height: 38px; border: none; background: transparent; cursor: pointer; }
         .modal-actions { display: flex; gap: 10px; justify-content: center; }
+        .modal-footer { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 0 4px; opacity: 0.7; }
+        .modal-footer img { height: 28px; width: 28px; object-fit: contain; }
+        .modal-footer span { font-size: 0.7rem; color: #aaa; letter-spacing: 0.5px; }
         .btn { padding: 10px 20px; border-radius: 30px; border: none; font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
         .btn:hover { background: rgba(255,255,255,0.2); }
         .btn.primary { background: var(--gold); color: #000; border-color: var(--gold); }
@@ -89,37 +69,10 @@
     </style>
 </head>
 <body>
-    <!-- Окно пробного периода -->
-    <div class="trial-info-overlay hidden" id="trialInfoOverlay">
-        <div class="trial-info-card">
-            <h3>🎁 Пробный период</h3>
-            <p>Активирован пробный период на <strong>24 часа</strong>.<br>Далее доступ навсегда за <strong>500 ₽</strong>.</p>
-            <button class="paywall-btn primary" id="btnTrialOk" style="width:auto;">Понятно</button>
-        </div>
-    </div>
-
-    <!-- Окно оплаты -->
-    <div class="paywall-overlay hidden" id="paywallOverlay">
-        <div class="paywall-card">
-            <h3>🔒 Пробный период истёк</h3>
-            <p>Для продолжения приобретите доступ.<br>Единоразовый платёж <strong>500 ₽</strong> навсегда.</p>
-            <p style="font-size:0.85rem;">Ваш идентификатор устройства:</p>
-            <div class="device-id-box" id="deviceIdDisplay"></div>
-            <a href="https://t.me/scorpTIMER_bot" target="_blank" class="paywall-btn primary">💳 ОПЛАТИТЬ В TELEGRAM</a>
-            <input type="text" class="paywall-input" id="activationCodeInput" placeholder="Введите код активации" maxlength="16" autocomplete="off">
-            <div class="paywall-buttons">
-                <button class="paywall-btn primary" id="btnActivate" style="width:auto;">🔓 Активировать</button>
-                <button class="paywall-btn secondary" id="btnClosePaywall" style="width:auto;">✖ Закрыть</button>
-            </div>
-            <div class="paywall-status" id="paywallStatus"></div>
-        </div>
-    </div>
-
     <div class="topbar">
         <div class="game-timer-box">
             <span class="game-timer-label">⏱ МАТЧ</span>
             <span class="game-timer-display" id="gameTimerDisplay">10:00</span>
-            <span class="trial-indicator" id="trialIndicator"></span>
         </div>
         <div class="topbar-buttons">
             <button class="btn-icon" id="btnPlayPause" title="Старт / Пауза">▶</button>
@@ -150,319 +103,166 @@
                     <div class="setting-row"><label>🎨 Цвет команды D</label><input type="color" id="inputColorD" value="#f39c12"></div>
                 </div>
             </div>
-            <div class="modal-actions"><button class="btn primary" id="btnSaveSettings">💾 Сохранить</button><button class="btn danger" id="btnCloseSettings">✖ Закрыть</button></div>
+            <div class="modal-actions">
+                <button class="btn primary" id="btnSaveSettings">💾 Сохранить</button>
+                <button class="btn danger" id="btnCloseSettings">✖ Закрыть</button>
+            </div>
+            <div class="modal-footer">
+                <img src="logo6.png" alt="logo">
+                <span>created by XAH CK Скорпион</span>
+            </div>
         </div>
     </div>
 
     <script>
-        // ---------- НАСТРОЙКИ ----------
-        const JSONBIN_BIN_ID = '69f9a562856a682189aa4915';
-        const JSONBIN_API_KEY = '$2a$10$dYI80f9TMdl5i01/t3Md8ea0lNY1JvpM4ILr4Ad5ZguD6fbdcSvTm';
-        const SECRET_KEY = 'ScorpTim3r_Secret!2026';
-        const TRIAL_HOURS = 24;
-
-        // ---------- УСТРОЙСТВО ----------
-        function generateFingerprint() {
-            var data = [navigator.userAgent, navigator.language, screen.colorDepth, screen.width + 'x' + screen.height].join('|');
-            var hash = 0;
-            for (var i = 0; i < data.length; i++) { hash = ((hash << 5) - hash) + data.charCodeAt(i); hash |= 0; }
-            return 'dev-' + Math.abs(hash).toString(36);
-        }
-
-        function getDeviceId() { return generateFingerprint(); }
-
-        // ---------- КУКИ ----------
-        function setCookie(name, value, days) {
-            var d = new Date(); d.setTime(d.getTime() + days*86400000);
-            document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
-        }
-        function getCookie(name) {
-            var n = name + '='; var ca = document.cookie.split(';');
-            for (var i = 0; i < ca.length; i++) { var c = ca[i].trim(); if (c.indexOf(n) === 0) return decodeURIComponent(c.substring(n.length)); }
-            return null;
-        }
-
-        // ---------- JSONBIN ----------
-        async function jsonbinGet() {
-            var r = await fetch('https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID + '/latest', { headers: { 'X-Master-Key': JSONBIN_API_KEY } });
-            if (!r.ok) throw new Error('jsonbin read error');
-            return (await r.json()).record;
-        }
-        async function jsonbinPut(data) {
-            await fetch('https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID, {
-                method: 'PUT', headers: { 'X-Master-Key': JSONBIN_API_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').then(function() {}).catch(function() {});
             });
         }
 
-        async function checkLicense() {
-            var deviceId = getDeviceId();
-            if (getCookie('activated') === 'true') return 'activated';
-            var trialStart = getCookie('trialStart');
-            if (!trialStart) { setCookie('trialStart', Date.now().toString(), 30); return 'trial'; }
-            if (Date.now() - parseInt(trialStart) < TRIAL_HOURS * 3600000) return 'trial';
-            try {
-                var data = await jsonbinGet();
-                if (Array.isArray(data.activated) && data.activated.includes(deviceId)) {
-                    setCookie('activated', 'true', 36500); return 'activated';
+        (function() {
+            var state = {
+                matchDuration: 600, timeLeft: 600, matchActive: false, ended: false, currentHolder: null,
+                times: { A: 0, B: 0, C: 0, D: 0 }, teamCount: 2,
+                teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ОРАНЖЕВЫЕ' },
+                teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
+                lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
+                audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false
+            };
+
+            var mainArena = document.getElementById('mainArena'), gameTimerDisplay = document.getElementById('gameTimerDisplay'),
+                btnPlayPause = document.getElementById('btnPlayPause'), btnReset = document.getElementById('btnReset'),
+                btnSettings = document.getElementById('btnSettings'), btnEndGame = document.getElementById('btnEndGame'),
+                modalOverlay = document.getElementById('modalOverlay'), inputMatchMin = document.getElementById('inputMatchMin'),
+                inputTeamCount = document.getElementById('inputTeamCount'), inputNameA = document.getElementById('inputNameA'),
+                inputColorA = document.getElementById('inputColorA'), inputNameB = document.getElementById('inputNameB'),
+                inputColorB = document.getElementById('inputColorB'), inputNameC = document.getElementById('inputNameC'),
+                inputColorC = document.getElementById('inputColorC'), inputNameD = document.getElementById('inputNameD'),
+                inputColorD = document.getElementById('inputColorD'), teamCPanel = document.getElementById('teamCPanel'),
+                teamDPanel = document.getElementById('teamDPanel'), btnSaveSettings = document.getElementById('btnSaveSettings'),
+                btnCloseSettings = document.getElementById('btnCloseSettings'), panels = {};
+
+            function getAudioContext() { if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (state.audioCtx.state === 'suspended') state.audioCtx.resume(); return state.audioCtx; }
+            function loadAudioFile(url, cb) { fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(b => b ? getAudioContext().decodeAudioData(b) : null).then(d => { if (d && cb) cb(url, d); }); }
+            function preloadAudioFiles() {
+                if (state.audioLoaded) return;
+                ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); });
+                setTimeout(function() { state.audioLoaded = true; }, 3000);
+            }
+            function getSoundForColor(hex) {
+                hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+                if ((r > 200 && g > 180 && b < 100) || (r > 200 && g > 80 && g < 180 && b < 80)) return 'zeltie.mp3';
+                if (r > 200 && g > 200 && b > 200) return 'bel.mp3'; if (r > g && r > b) return 'kras.mp3'; if (b > r && b > g) return 'sinie.mp3'; if (g > r && g > b) return 'zelen.mp3';
+                if (r > 180 && b > 150) return 'kras.mp3'; if (g > 180 && b > 150) return 'sinie.mp3'; if (r > 120 && b > 180) return 'sinie.mp3'; return 'kras.mp3';
+            }
+            function playBuffer(buf, loop) { if (!buf) return; var ctx = getAudioContext(), src = ctx.createBufferSource(); src.buffer = buf; src.loop = !!loop; src.connect(ctx.destination); src.start(0); return src; }
+            function playCaptureSound(color) { if (!state.audioLoaded) return; var f = getSoundForColor(color); if (state.buffers[f]) playBuffer(state.buffers[f], false); }
+            function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
+            function stopSiren() { if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode = null; } }
+            function formatTime(sec) { var m = Math.floor(sec/60), s = Math.floor(sec%60); return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
+            function getWinningTeam() { var mx = null, mt = -1; ['A','B','C','D'].forEach(function(t) { if (state.times[t] > mt) { mt = state.times[t]; mx = t; } }); return mx; }
+            function updateUI() {
+                gameTimerDisplay.textContent = formatTime(state.timeLeft);
+                gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft<=60 && state.timeLeft>0);
+                var teams = ['A','B','C','D'].slice(0, state.teamCount);
+                teams.forEach(function(t) {
+                    var p = panels[t]; if (!p) return;
+                    p.querySelector('.team-name').textContent = state.teamNames[t];
+                    p.style.backgroundColor = state.teamColors[t];
+                    p.querySelector('.team-time').textContent = formatTime(state.times[t]);
+                    var txt = 'ОЖИДАЙТЕ СТАРТА';
+                    if (state.ended) { var w = getWinningTeam(); txt = (t===w&&w)?'🏆 ПОБЕДИТЕЛЬ':''; }
+                    else if (state.matchActive) txt = state.currentHolder===t ? '⚡ УДЕРЖАНИЕ' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
+                    p.querySelector('.team-status').textContent = txt;
+                    p.classList.remove('active-holder','dimmed','inactive-for-start');
+                    if (!state.matchActive && !state.ended) p.classList.add('inactive-for-start');
+                    if (state.matchActive && !state.ended) { if (state.currentHolder===t) p.classList.add('active-holder'); else if (state.currentHolder) p.classList.add('dimmed'); }
+                });
+                btnEndGame.style.display = state.ended ? 'flex' : 'none';
+                btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
+                if (state.matchActive) btnPlayPause.classList.add('active'); else btnPlayPause.classList.remove('active');
+            }
+            function capture(team) { if (state.ended || !state.matchActive || state.currentHolder===team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); updateUI(); }
+            function proceedStartMatch() { state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; state.lastTick = Date.now(); if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100); updateUI(); }
+            function startMatch() { if (state.ended) resetMatch(); if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); } else proceedStartMatch(); }
+            function pauseMatch() { state.matchActive = false; stopSiren(); updateUI(); }
+            function toggleMatch() { if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
+            function resetMatch() { pauseMatch(); state.timeLeft = state.matchDuration; state.ended = false; state.currentHolder = null; state.times = { A:0,B:0,C:0,D:0 }; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; stopSiren(); if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; } updateUI(); btnEndGame.style.display = 'none'; }
+            function endMatchByTimer() { state.matchActive = false; state.ended = true; state.currentHolder = null; stopSiren(); startSiren(); updateUI(); }
+            function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); }
+            function gameTick() {
+                var now = Date.now(); if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
+                var d = (now - state.lastTick) / 1000; if (d <= 0) return;
+                var prev = state.timeLeft; state.timeLeft -= d;
+                var elapsed = state.matchDuration - state.timeLeft, prevElapsed = state.matchDuration - prev;
+                if (prevElapsed < 300 && elapsed >= 300 && !state.fiveMinPlayed && state.timeLeft > 0) { state.fiveMinPlayed = true; if (state.buffers['start.mp3']) playBuffer(state.buffers['start.mp3'], false); }
+                if (prev > 600 && state.timeLeft <= 600 && !state.tenMinPlayed && state.timeLeft > 0) { state.tenMinPlayed = true; if (state.buffers['siren3.mp3']) playBuffer(state.buffers['siren3.mp3'], false); }
+                if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) { state.warningPlayed = true; if (state.buffers['siren1.mp3']) playBuffer(state.buffers['siren1.mp3'], false); }
+                if (prev > 60 && state.timeLeft <= 60 && !state.warning1minPlayed && state.timeLeft > 0) { state.warning1minPlayed = true; if (state.buffers['siren2.mp3']) playBuffer(state.buffers['siren2.mp3'], false); }
+                if (state.timeLeft <= 0) { state.timeLeft = 0; endMatchByTimer(); return; }
+                if (state.currentHolder) state.times[state.currentHolder] += d;
+                state.lastTick = now; updateUI();
+            }
+            function renderPanels() {
+                mainArena.innerHTML = ''; panels = {};
+                for (var i = 0; i < state.teamCount; i++) {
+                    var team = String.fromCharCode(65+i);
+                    var panel = document.createElement('div'); panel.className = 'team-panel inactive-for-start'; panel.style.backgroundColor = state.teamColors[team];
+                    panel.innerHTML = '<div class="dim-overlay"></div><div class="team-content"><div class="team-name">'+state.teamNames[team]+'</div><div class="team-time" id="time'+team+'">00:00</div><div class="team-status" id="status'+team+'">ОЖИДАЙТЕ СТАРТА</div></div>';
+                    panel.addEventListener('click', (function(t) { return function(e) { e.preventDefault(); capture(t); }; })(team));
+                    panel.addEventListener('touchend', (function(t) { return function(e) { e.preventDefault(); capture(t); }; })(team));
+                    mainArena.appendChild(panel); panels[team] = panel;
                 }
-                if (Array.isArray(data.trials) && data.trials.includes(deviceId)) return 'expired';
-                if (!Array.isArray(data.trials)) data.trials = [];
-                data.trials.push(deviceId);
-                await jsonbinPut(data);
-                setCookie('trialStart', Date.now().toString(), 30);
-                return 'trial';
-            } catch(e) {
-                return Date.now() - parseInt(trialStart) < TRIAL_HOURS * 3600000 ? 'trial' : 'expired';
             }
-        }
-
-        async function activateDevice(code) {
-            var deviceId = getDeviceId();
-            var enc = new TextEncoder();
-            var key = await crypto.subtle.importKey('raw', enc.encode(SECRET_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-            var sig = await crypto.subtle.sign('HMAC', key, enc.encode(deviceId));
-            var expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('').substring(0,16).toUpperCase();
-            if (code.trim().toUpperCase() !== expected) return false;
-            try {
-                var data = await jsonbinGet();
-                if (!Array.isArray(data.activated)) data.activated = [];
-                if (!data.activated.includes(deviceId)) { data.activated.push(deviceId); await jsonbinPut(data); }
-            } catch(e) {}
-            setCookie('activated', 'true', 36500);
-            return true;
-        }
-
-        // ---------- UI ----------
-        var paywallOverlay = document.getElementById('paywallOverlay');
-        var trialInfoOverlay = document.getElementById('trialInfoOverlay');
-        var deviceIdDisplay = document.getElementById('deviceIdDisplay');
-        var activationCodeInput = document.getElementById('activationCodeInput');
-        var btnActivate = document.getElementById('btnActivate');
-        var btnClosePaywall = document.getElementById('btnClosePaywall');
-        var paywallStatus = document.getElementById('paywallStatus');
-        var trialIndicator = document.getElementById('trialIndicator');
-        var btnTrialOk = document.getElementById('btnTrialOk');
-        var appLocked = false;
-
-        var trialStart = getCookie('trialStart') ? parseInt(getCookie('trialStart')) : Date.now();
-        function updateTrialIndicator() {
-            if (getCookie('activated') === 'true') { trialIndicator.textContent = ''; return; }
-            var remaining = TRIAL_HOURS * 3600000 - (Date.now() - trialStart);
-            if (remaining <= 0 && appLocked) { trialIndicator.textContent = '🔒 Истёк'; return; }
-            if (remaining <= 0) { trialIndicator.textContent = ''; return; }
-            var h = Math.floor(remaining / 3600000), m = Math.floor((remaining % 3600000) / 60000);
-            trialIndicator.textContent = '⏳ ' + h + 'ч ' + m + 'м';
-        }
-
-        (async function init() {
-            var license = await checkLicense();
-            if (license === 'activated') {
-                appLocked = false;
-                trialInfoOverlay.classList.add('hidden');
-                paywallOverlay.classList.add('hidden');
-            } else if (license === 'trial') {
-                appLocked = false;
-                trialInfoOverlay.classList.remove('hidden');
-                paywallOverlay.classList.add('hidden');
-            } else {
-                appLocked = true;
-                trialInfoOverlay.classList.add('hidden');
-                paywallOverlay.classList.remove('hidden');
-                deviceIdDisplay.textContent = getDeviceId();
+            function getColorName(hex) {
+                hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+                if (r > 200 && g > 180 && b < 100) return 'Жёлтые'; if (r > 200 && g > 80 && g < 180 && b < 80) return 'Оранжевые';
+                if (r > 200 && g > 200 && b > 200) return 'Белые'; if (r < 50 && g < 50 && b < 50) return 'Чёрные';
+                if (r > g && r > b && r > 100) return 'Красные'; if (g > r && g > b && g > 100) return 'Зелёные'; if (b > r && b > g && b > 100) return 'Синие';
+                if (r > 180 && b > 150) return 'Розовые'; if (g > 180 && b > 150) return 'Голубые'; if (r > 120 && b > 180) return 'Фиолетовые';
+                return 'Команда';
             }
-            updateTrialIndicator();
-            setInterval(updateTrialIndicator, 60000);
+            inputColorA.addEventListener('input', function() { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
+            inputColorB.addEventListener('input', function() { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
+            inputColorC.addEventListener('input', function() { if (inputNameC.readOnly) inputNameC.value = getColorName(inputColorC.value); });
+            inputColorD.addEventListener('input', function() { if (inputNameD.readOnly) inputNameD.value = getColorName(inputColorD.value); });
+            inputTeamCount.addEventListener('change', function() { var v = parseInt(inputTeamCount.value); teamCPanel.classList.toggle('hidden', v < 3); teamDPanel.classList.toggle('hidden', v < 4); });
+            function openSettings() {
+                inputMatchMin.value = Math.round(state.matchDuration/60); inputTeamCount.value = state.teamCount;
+                inputNameA.value = state.teamNames.A; inputColorA.value = state.teamColors.A; inputNameB.value = state.teamNames.B; inputColorB.value = state.teamColors.B;
+                inputNameC.value = state.teamNames.C; inputColorC.value = state.teamColors.C; inputNameD.value = state.teamNames.D; inputColorD.value = state.teamColors.D;
+                teamCPanel.classList.toggle('hidden', state.teamCount < 3); teamDPanel.classList.toggle('hidden', state.teamCount < 4); modalOverlay.classList.add('open');
+            }
+            function closeSettings() { modalOverlay.classList.remove('open'); }
+            function saveSettings() {
+                var mins = parseInt(inputMatchMin.value); if (isNaN(mins) || mins<1) mins = 10; state.matchDuration = mins*60; state.teamCount = parseInt(inputTeamCount.value);
+                state.teamNames.A = inputNameA.value.trim() || 'A'; state.teamNames.B = inputNameB.value.trim() || 'B';
+                if (state.teamCount >= 3) state.teamNames.C = inputNameC.value.trim() || 'C'; if (state.teamCount >= 4) state.teamNames.D = inputNameD.value.trim() || 'D';
+                state.teamColors.A = inputColorA.value; state.teamColors.B = inputColorB.value;
+                if (state.teamCount >= 3) state.teamColors.C = inputColorC.value; if (state.teamCount >= 4) state.teamColors.D = inputColorD.value;
+                localStorage.setItem('appSettings', JSON.stringify({ teamCount: state.teamCount, names: state.teamNames, colors: state.teamColors, matchDuration: state.matchDuration }));
+                renderPanels(); resetMatch(); closeSettings(); updateUI();
+            }
+            function loadSettings() {
+                var saved = localStorage.getItem('appSettings');
+                if (saved) { try { var d = JSON.parse(saved); state.teamCount = d.teamCount || 2; state.teamNames = d.names || state.teamNames; state.teamColors = d.colors || state.teamColors; state.matchDuration = d.matchDuration || 600; } catch(e) {} }
+                state.timeLeft = state.matchDuration;
+            }
 
-            btnTrialOk.addEventListener('click', function() { trialInfoOverlay.classList.add('hidden'); });
-            btnActivate.addEventListener('click', async function() {
-                var code = activationCodeInput.value.trim();
-                if (!code) { paywallStatus.textContent = 'Введите код'; return; }
-                if (await activateDevice(code)) {
-                    appLocked = false;
-                    paywallOverlay.classList.add('hidden');
-                    paywallStatus.textContent = '';
-                    updateTrialIndicator();
-                } else paywallStatus.textContent = 'Неверный код';
+            btnPlayPause.addEventListener('click', toggleMatch); btnReset.addEventListener('click', resetMatch); btnSettings.addEventListener('click', openSettings); btnEndGame.addEventListener('click', finishGame);
+            btnSaveSettings.addEventListener('click', saveSettings); btnCloseSettings.addEventListener('click', closeSettings);
+            modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeSettings(); });
+            window.addEventListener('keydown', function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                if (e.key === 'a') { capture('A'); e.preventDefault(); } if (e.key === 'b') { capture('B'); e.preventDefault(); }
+                if (e.key === 'c' && state.teamCount >= 3) { capture('C'); e.preventDefault(); } if (e.key === 'd' && state.teamCount >= 4) { capture('D'); e.preventDefault(); }
+                if (e.key === ' ') { toggleMatch(); e.preventDefault(); } if (e.key === 'r') { resetMatch(); e.preventDefault(); }
+                if (e.key === 's') { openSettings(); e.preventDefault(); } if (e.key === 'Escape') { closeSettings(); }
             });
-            btnClosePaywall.addEventListener('click', function() {
-                paywallOverlay.classList.add('hidden');
-                if (appLocked) setTimeout(function() { if (appLocked) paywallOverlay.classList.remove('hidden'); }, 2000);
-            });
+
+            loadSettings(); renderPanels(); updateUI(); preloadAudioFiles();
         })();
-
-        // ---------- ИГРА (весь код как раньше, только startMatch проверяет appLocked) ----------
-        var state = {
-            matchDuration: 600, timeLeft: 600, matchActive: false, ended: false, currentHolder: null,
-            times: { A: 0, B: 0, C: 0, D: 0 }, teamCount: 2,
-            teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ОРАНЖЕВЫЕ' },
-            teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
-            lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
-            audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false
-        };
-
-        var mainArena = document.getElementById('mainArena'), gameTimerDisplay = document.getElementById('gameTimerDisplay'),
-            btnPlayPause = document.getElementById('btnPlayPause'), btnReset = document.getElementById('btnReset'),
-            btnSettings = document.getElementById('btnSettings'), btnEndGame = document.getElementById('btnEndGame'),
-            modalOverlay = document.getElementById('modalOverlay'), inputMatchMin = document.getElementById('inputMatchMin'),
-            inputTeamCount = document.getElementById('inputTeamCount'), inputNameA = document.getElementById('inputNameA'),
-            inputColorA = document.getElementById('inputColorA'), inputNameB = document.getElementById('inputNameB'),
-            inputColorB = document.getElementById('inputColorB'), inputNameC = document.getElementById('inputNameC'),
-            inputColorC = document.getElementById('inputColorC'), inputNameD = document.getElementById('inputNameD'),
-            inputColorD = document.getElementById('inputColorD'), teamCPanel = document.getElementById('teamCPanel'),
-            teamDPanel = document.getElementById('teamDPanel'), btnSaveSettings = document.getElementById('btnSaveSettings'),
-            btnCloseSettings = document.getElementById('btnCloseSettings'), panels = {};
-
-        function getAudioContext() {
-            if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
-            return state.audioCtx;
-        }
-        function loadAudioFile(url, cb) { fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(b => b ? getAudioContext().decodeAudioData(b) : null).then(d => { if (d && cb) cb(url, d); }); }
-        function preloadAudioFiles() {
-            if (state.audioLoaded) return;
-            ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); });
-            setTimeout(function() { state.audioLoaded = true; }, 3000);
-        }
-        function getSoundForColor(hex) {
-            hex = hex.replace('#','').toLowerCase();
-            var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
-            if ((r > 200 && g > 180 && b < 100) || (r > 200 && g > 80 && g < 180 && b < 80)) return 'zeltie.mp3';
-            if (r > 200 && g > 200 && b > 200) return 'bel.mp3';
-            if (r > g && r > b) return 'kras.mp3';
-            if (b > r && b > g) return 'sinie.mp3';
-            if (g > r && g > b) return 'zelen.mp3';
-            if (r > 180 && b > 150) return 'kras.mp3';
-            if (g > 180 && b > 150) return 'sinie.mp3';
-            if (r > 120 && b > 180) return 'sinie.mp3';
-            return 'kras.mp3';
-        }
-        function playBuffer(buf, loop) { if (!buf) return; var ctx = getAudioContext(), src = ctx.createBufferSource(); src.buffer = buf; src.loop = !!loop; src.connect(ctx.destination); src.start(0); return src; }
-        function playCaptureSound(color) { if (!state.audioLoaded) return; var f = getSoundForColor(color); if (state.buffers[f]) playBuffer(state.buffers[f], false); }
-        function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
-        function stopSiren() { if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode = null; } }
-        function formatTime(sec) { var m = Math.floor(sec/60), s = Math.floor(sec%60); return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
-        function getWinningTeam() { var mx = null, mt = -1; ['A','B','C','D'].forEach(function(t) { if (state.times[t] > mt) { mt = state.times[t]; mx = t; } }); return mx; }
-        function updateUI() {
-            gameTimerDisplay.textContent = formatTime(state.timeLeft);
-            gameTimerDisplay.classList.toggle('warning', state.matchActive && state.timeLeft<=60 && state.timeLeft>0);
-            var teams = ['A','B','C','D'].slice(0, state.teamCount);
-            teams.forEach(function(t) {
-                var p = panels[t]; if (!p) return;
-                p.querySelector('.team-name').textContent = state.teamNames[t];
-                p.style.backgroundColor = state.teamColors[t];
-                p.querySelector('.team-time').textContent = formatTime(state.times[t]);
-                var txt = 'ОЖИДАЙТЕ СТАРТА';
-                if (state.ended) { var w = getWinningTeam(); txt = (t===w&&w)?'🏆 ПОБЕДИТЕЛЬ':''; }
-                else if (state.matchActive) txt = state.currentHolder===t ? '⚡ УДЕРЖАНИЕ' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА';
-                p.querySelector('.team-status').textContent = txt;
-                p.classList.remove('active-holder','dimmed','inactive-for-start');
-                if (!state.matchActive && !state.ended) p.classList.add('inactive-for-start');
-                if (state.matchActive && !state.ended) {
-                    if (state.currentHolder===t) p.classList.add('active-holder'); else if (state.currentHolder) p.classList.add('dimmed');
-                }
-            });
-            btnEndGame.style.display = state.ended ? 'flex' : 'none';
-            btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
-            if (state.matchActive) btnPlayPause.classList.add('active'); else btnPlayPause.classList.remove('active');
-        }
-        function capture(team) { if (state.ended || !state.matchActive || state.currentHolder===team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); updateUI(); }
-        function proceedStartMatch() {
-            state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false;
-            state.lastTick = Date.now();
-            if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100);
-            updateUI();
-        }
-        function startMatch() {
-            if (appLocked) { paywallOverlay.classList.remove('hidden'); return; }
-            if (state.ended) resetMatch();
-            if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); } else proceedStartMatch();
-        }
-        function pauseMatch() { state.matchActive = false; stopSiren(); updateUI(); }
-        function toggleMatch() { if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
-        function resetMatch() {
-            pauseMatch(); state.timeLeft = state.matchDuration; state.ended = false; state.currentHolder = null;
-            state.times = { A:0,B:0,C:0,D:0 }; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false;
-            stopSiren(); if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; }
-            updateUI(); btnEndGame.style.display = 'none';
-        }
-        function endMatchByTimer() { state.matchActive = false; state.ended = true; state.currentHolder = null; stopSiren(); startSiren(); updateUI(); }
-        function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); }
-        function gameTick() {
-            var now = Date.now();
-            if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
-            var d = (now - state.lastTick) / 1000; if (d <= 0) return;
-            var prev = state.timeLeft; state.timeLeft -= d;
-            var elapsed = state.matchDuration - state.timeLeft, prevElapsed = state.matchDuration - prev;
-            if (prevElapsed < 300 && elapsed >= 300 && !state.fiveMinPlayed && state.timeLeft > 0) { state.fiveMinPlayed = true; if (state.buffers['start.mp3']) playBuffer(state.buffers['start.mp3'], false); }
-            if (prev > 600 && state.timeLeft <= 600 && !state.tenMinPlayed && state.timeLeft > 0) { state.tenMinPlayed = true; if (state.buffers['siren3.mp3']) playBuffer(state.buffers['siren3.mp3'], false); }
-            if (prev > 300 && state.timeLeft <= 300 && !state.warningPlayed && state.timeLeft > 0) { state.warningPlayed = true; if (state.buffers['siren1.mp3']) playBuffer(state.buffers['siren1.mp3'], false); }
-            if (prev > 60 && state.timeLeft <= 60 && !state.warning1minPlayed && state.timeLeft > 0) { state.warning1minPlayed = true; if (state.buffers['siren2.mp3']) playBuffer(state.buffers['siren2.mp3'], false); }
-            if (state.timeLeft <= 0) { state.timeLeft = 0; endMatchByTimer(); return; }
-            if (state.currentHolder) state.times[state.currentHolder] += d;
-            state.lastTick = now; updateUI();
-        }
-        function renderPanels() {
-            mainArena.innerHTML = ''; panels = {};
-            for (var i = 0; i < state.teamCount; i++) {
-                var team = String.fromCharCode(65+i);
-                var panel = document.createElement('div'); panel.className = 'team-panel inactive-for-start'; panel.style.backgroundColor = state.teamColors[team];
-                panel.innerHTML = '<div class="dim-overlay"></div><div class="team-content"><div class="team-name">'+state.teamNames[team]+'</div><div class="team-time" id="time'+team+'">00:00</div><div class="team-status" id="status'+team+'">ОЖИДАЙТЕ СТАРТА</div></div>';
-                panel.addEventListener('click', (function(t) { return function(e) { e.preventDefault(); capture(t); }; })(team));
-                panel.addEventListener('touchend', (function(t) { return function(e) { e.preventDefault(); capture(t); }; })(team));
-                mainArena.appendChild(panel); panels[team] = panel;
-            }
-        }
-        function getColorName(hex) {
-            hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
-            if (r > 200 && g > 180 && b < 100) return 'Жёлтые'; if (r > 200 && g > 80 && g < 180 && b < 80) return 'Оранжевые';
-            if (r > 200 && g > 200 && b > 200) return 'Белые'; if (r < 50 && g < 50 && b < 50) return 'Чёрные';
-            if (r > g && r > b && r > 100) return 'Красные'; if (g > r && g > b && g > 100) return 'Зелёные'; if (b > r && b > g && b > 100) return 'Синие';
-            if (r > 180 && b > 150) return 'Розовые'; if (g > 180 && b > 150) return 'Голубые'; if (r > 120 && b > 180) return 'Фиолетовые';
-            return 'Команда';
-        }
-        inputColorA.addEventListener('input', function() { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
-        inputColorB.addEventListener('input', function() { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
-        inputColorC.addEventListener('input', function() { if (inputNameC.readOnly) inputNameC.value = getColorName(inputColorC.value); });
-        inputColorD.addEventListener('input', function() { if (inputNameD.readOnly) inputNameD.value = getColorName(inputColorD.value); });
-        inputTeamCount.addEventListener('change', function() { var v = parseInt(inputTeamCount.value); teamCPanel.classList.toggle('hidden', v < 3); teamDPanel.classList.toggle('hidden', v < 4); });
-        function openSettings() {
-            inputMatchMin.value = Math.round(state.matchDuration/60); inputTeamCount.value = state.teamCount;
-            inputNameA.value = state.teamNames.A; inputColorA.value = state.teamColors.A; inputNameB.value = state.teamNames.B; inputColorB.value = state.teamColors.B;
-            inputNameC.value = state.teamNames.C; inputColorC.value = state.teamColors.C; inputNameD.value = state.teamNames.D; inputColorD.value = state.teamColors.D;
-            teamCPanel.classList.toggle('hidden', state.teamCount < 3); teamDPanel.classList.toggle('hidden', state.teamCount < 4); modalOverlay.classList.add('open');
-        }
-        function closeSettings() { modalOverlay.classList.remove('open'); }
-        function saveSettings() {
-            var mins = parseInt(inputMatchMin.value); if (isNaN(mins) || mins<1) mins = 10; state.matchDuration = mins*60; state.teamCount = parseInt(inputTeamCount.value);
-            state.teamNames.A = inputNameA.value.trim() || 'A'; state.teamNames.B = inputNameB.value.trim() || 'B';
-            if (state.teamCount >= 3) state.teamNames.C = inputNameC.value.trim() || 'C'; if (state.teamCount >= 4) state.teamNames.D = inputNameD.value.trim() || 'D';
-            state.teamColors.A = inputColorA.value; state.teamColors.B = inputColorB.value;
-            if (state.teamCount >= 3) state.teamColors.C = inputColorC.value; if (state.teamCount >= 4) state.teamColors.D = inputColorD.value;
-            localStorage.setItem('appSettings', JSON.stringify({ teamCount: state.teamCount, names: state.teamNames, colors: state.teamColors, matchDuration: state.matchDuration }));
-            renderPanels(); resetMatch(); closeSettings(); updateUI();
-        }
-        function loadSettings() {
-            var saved = localStorage.getItem('appSettings');
-            if (saved) { try { var d = JSON.parse(saved); state.teamCount = d.teamCount || 2; state.teamNames = d.names || state.teamNames; state.teamColors = d.colors || state.teamColors; state.matchDuration = d.matchDuration || 600; } catch(e) {} }
-            state.timeLeft = state.matchDuration;
-        }
-
-        btnPlayPause.addEventListener('click', toggleMatch);
-        btnReset.addEventListener('click', resetMatch);
-        btnSettings.addEventListener('click', openSettings);
-        btnEndGame.addEventListener('click', finishGame);
-        btnSaveSettings.addEventListener('click', saveSettings);
-        btnCloseSettings.addEventListener('click', closeSettings);
-        modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) closeSettings(); });
-        window.addEventListener('keydown', function(e) {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-            if (e.key === 'a') { capture('A'); e.preventDefault(); } if (e.key === 'b') { capture('B'); e.preventDefault(); }
-            if (e.key === 'c' && state.teamCount >= 3) { capture('C'); e.preventDefault(); } if (e.key === 'd' && state.teamCount >= 4) { capture('D'); e.preventDefault(); }
-            if (e.key === ' ') { toggleMatch(); e.preventDefault(); } if (e.key === 'r') { resetMatch(); e.preventDefault(); }
-            if (e.key === 's') { openSettings(); e.preventDefault(); } if (e.key === 'Escape') { closeSettings(); }
-        });
-
-        loadSettings(); renderPanels(); updateUI(); preloadAudioFiles();
     </script>
 </body>
 </html>
