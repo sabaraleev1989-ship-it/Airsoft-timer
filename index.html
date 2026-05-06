@@ -147,21 +147,36 @@
             function loadAudioFile(url, cb) { fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(b => b ? getAudioContext().decodeAudioData(b) : null).then(d => { if (d && cb) cb(url, d); }); }
             function preloadAudioFiles() {
                 if (state.audioLoaded) return;
-                ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); });
+                ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3','orange.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); });
                 setTimeout(function() { state.audioLoaded = true; }, 3000);
             }
             function getSoundForColor(hex) {
                 hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
-                if ((r > 200 && g > 180 && b < 100) || (r > 200 && g > 80 && g < 180 && b < 80)) return 'zeltie.mp3';
-                if (r > 200 && g > 200 && b > 200) return 'bel.mp3'; if (r > g && r > b) return 'kras.mp3'; if (b > r && b > g) return 'sinie.mp3'; if (g > r && g > b) return 'zelen.mp3';
-                if (r > 180 && b > 150) return 'kras.mp3'; if (g > 180 && b > 150) return 'sinie.mp3'; if (r > 120 && b > 180) return 'sinie.mp3'; return 'kras.mp3';
+                // Оранжевый: красный > 200, зелёный > 80 и < 180, синий < 80
+                if (r > 200 && g > 80 && g < 180 && b < 80) return 'orange.mp3';
+                // Жёлтый: красный > 200, зелёный > 180, синий < 80
+                if (r > 200 && g > 180 && b < 100) return 'zeltie.mp3';
+                // Белый
+                if (r > 200 && g > 200 && b > 200) return 'bel.mp3';
+                // Красный (доминирует)
+                if (r > g && r > b) return 'kras.mp3';
+                // Синий (доминирует)
+                if (b > r && b > g) return 'sinie.mp3';
+                // Зелёный (доминирует)
+                if (g > r && g > b) return 'zelen.mp3';
+                // Розовый (красный + синий)
+                if (r > 180 && b > 150) return 'kras.mp3';
+                // Голубой (зелёный + синий)
+                if (g > 180 && b > 150) return 'sinie.mp3';
+                // Фиолетовый (красный + синий)
+                if (r > 120 && b > 180) return 'sinie.mp3';
+                return 'kras.mp3';
             }
             function playBuffer(buf, loop) { if (!buf) return; var ctx = getAudioContext(), src = ctx.createBufferSource(); src.buffer = buf; src.loop = !!loop; src.connect(ctx.destination); src.start(0); return src; }
             function playCaptureSound(color) { if (!state.audioLoaded) return; var f = getSoundForColor(color); if (state.buffers[f]) playBuffer(state.buffers[f], false); }
             function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
             function stopSiren() { if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode = null; } }
 
-            // Тихое тиканье
             function playTick() {
                 if (!state.audioLoaded) return;
                 try {
@@ -174,13 +189,7 @@
                 } catch(e) {}
             }
             var tickTimer = null;
-            function startTickSound() {
-                stopTickSound();
-                if (state.matchActive && state.currentHolder && state.audioLoaded) {
-                    playTick();
-                    tickTimer = setInterval(function() { if (state.matchActive && state.currentHolder) playTick(); else stopTickSound(); }, 1000);
-                }
-            }
+            function startTickSound() { stopTickSound(); if (state.matchActive && state.currentHolder && state.audioLoaded) { playTick(); tickTimer = setInterval(function() { if (state.matchActive && state.currentHolder) playTick(); else stopTickSound(); }, 1000); } }
             function stopTickSound() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
 
             function formatTime(sec) { var m = Math.floor(sec/60), s = Math.floor(sec%60); return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
@@ -240,7 +249,8 @@
             }
             function getColorName(hex) {
                 hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
-                if (r > 200 && g > 180 && b < 100) return 'Жёлтые'; if (r > 200 && g > 80 && g < 180 && b < 80) return 'Оранжевые';
+                if (r > 200 && g > 80 && g < 180 && b < 80) return 'Оранжевые';
+                if (r > 200 && g > 180 && b < 100) return 'Жёлтые';
                 if (r > 200 && g > 200 && b > 200) return 'Белые'; if (r < 50 && g < 50 && b < 50) return 'Чёрные';
                 if (r > g && r > b && r > 100) return 'Красные'; if (g > r && g > b && g > 100) return 'Зелёные'; if (b > r && b > g && b > 100) return 'Синие';
                 if (r > 180 && b > 150) return 'Розовые'; if (g > 180 && b > 150) return 'Голубые'; if (r > 120 && b > 180) return 'Фиолетовые';
