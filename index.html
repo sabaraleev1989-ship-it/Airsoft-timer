@@ -47,7 +47,7 @@
         .team-panel.active-holder { animation: activeGlow 1.2s infinite; border-color: rgba(255, 255, 255, 0.7); }
         @keyframes activeGlow { 0%,100% { box-shadow: 0 0 30px rgba(255,255,255,0.6), inset 0 0 30px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 60px rgba(255,255,255,0.8), inset 0 0 50px rgba(255,255,255,0.15); } }
 
-        /* Обводка по периметру — яркая, с пульсацией, звук через Web Audio */
+        /* Обводка по периметру — яркая, с пульсацией */
         .hold-border { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: 18px; }
         .hold-border svg { width: 100%; height: 100%; }
         .hold-border .border-path { fill: none; stroke: #ffffff; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)); animation: border-pulse 0.5s infinite alternate; }
@@ -159,7 +159,7 @@
                 lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
                 audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false,
                 holdSeconds: 0, lockCode: '', holdTimer: null, holdStart: null, pendingTeam: null, passTargetTeam: null,
-                holdBeepTimer: null
+                zahvatAudio: null
             };
 
             var mainArena = document.getElementById('mainArena'), gameTimerDisplay = document.getElementById('gameTimerDisplay'),
@@ -177,39 +177,16 @@
 
             inputHoldSeconds.addEventListener('input', function() { holdSecondsLabel.textContent = this.value; });
 
-            // Звук при удержании
-            var holdBeepCtx = null;
-            function playHoldBeep() {
-                if (!holdBeepCtx) holdBeepCtx = new (window.AudioContext || window.webkitAudioContext)();
-                var ctx = holdBeepCtx;
-                var now = ctx.currentTime;
-                var o = ctx.createOscillator();
-                var g = ctx.createGain();
-                o.type = 'sine';
-                o.frequency.setValueAtTime(1000, now);
-                g.gain.setValueAtTime(0.2, now);
-                g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-                o.connect(g);
-                g.connect(ctx.destination);
-                o.start(now);
-                o.stop(now + 0.1);
-            }
-
-            function startHoldBeep() {
-                if (state.holdBeepTimer) clearInterval(state.holdBeepTimer);
-                playHoldBeep();
-                state.holdBeepTimer = setInterval(playHoldBeep, 500);
-            }
-            function stopHoldBeep() {
-                if (state.holdBeepTimer) { clearInterval(state.holdBeepTimer); state.holdBeepTimer = null; }
-            }
-
             function getAudioContext() { if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (state.audioCtx.state === 'suspended') state.audioCtx.resume(); return state.audioCtx; }
             function loadAudioFile(url, cb) { fetch(url).then(function(r) { return r.ok ? r.arrayBuffer() : null; }).then(function(b) { return b ? getAudioContext().decodeAudioData(b) : null; }).then(function(d) { if (d && cb) cb(url, d); }); }
-            function preloadAudioFiles() { if (state.audioLoaded) return; ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3','orange.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); }); setTimeout(function() { state.audioLoaded = true; }, 3000); }
+            function preloadAudioFiles() { if (state.audioLoaded) return; 
+                ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3','orange.mp3','zahvat.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); }); 
+                setTimeout(function() { state.audioLoaded = true; }, 3000); }
             function getSoundForColor(hex) { hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); if (r > 200 && g > 80 && g < 180 && b < 100) return 'orange.mp3'; if (r > 200 && g > 180 && b < 100) return 'zeltie.mp3'; if (r > 200 && g > 200 && b > 200) return 'bel.mp3'; if (r > g && r > b) return 'kras.mp3'; if (b > r && b > g) return 'sinie.mp3'; if (g > r && g > b) return 'zelen.mp3'; return 'kras.mp3'; }
             function playBuffer(buf, loop) { if (!buf) return; var ctx = getAudioContext(), src = ctx.createBufferSource(); src.buffer = buf; src.loop = !!loop; src.connect(ctx.destination); src.start(0); return src; }
             function playCaptureSound(color) { if (!state.audioLoaded) return; var f = getSoundForColor(color); if (state.buffers[f]) playBuffer(state.buffers[f], false); }
+            function startZahvatSound() { stopZahvatSound(); if (state.buffers['zahvat.mp3']) { state.zahvatAudio = playBuffer(state.buffers['zahvat.mp3'], true); } }
+            function stopZahvatSound() { if (state.zahvatAudio) { try { state.zahvatAudio.stop(); } catch(e) {} state.zahvatAudio = null; } }
             function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
             function stopSiren() { if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode = null; } }
 
@@ -245,14 +222,9 @@
             passCancel.addEventListener('click', function() { passwordOverlay.classList.remove('active'); state.passTargetTeam = null; });
             passwordInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { passOk.click(); } });
 
-            // Плавная обводка по периметру через SVG
             function createHoldBorder(panel) {
                 var border = panel.querySelector('.hold-border');
-                if (!border) {
-                    border = document.createElement('div'); border.className = 'hold-border';
-                    border.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path class="border-path" d="M 10,5 L 90,5 Q 95,5 95,10 L 95,90 Q 95,95 90,95 L 10,95 Q 5,95 5,90 L 5,10 Q 5,5 10,5 Z" stroke-dasharray="0 400" stroke-dashoffset="400"/></svg>';
-                    panel.appendChild(border);
-                }
+                if (!border) { border = document.createElement('div'); border.className = 'hold-border'; border.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path class="border-path" d="M 10,5 L 90,5 Q 95,5 95,10 L 95,90 Q 95,95 90,95 L 10,95 Q 5,95 5,90 L 5,10 Q 5,5 10,5 Z" stroke-dasharray="0 400" stroke-dashoffset="400"/></svg>'; panel.appendChild(border); }
                 return border.querySelector('.border-path');
             }
 
@@ -260,12 +232,11 @@
                 if (!state.matchActive || state.ended) return;
                 if (state.currentHolder === team) return;
                 state.pendingTeam = team; state.holdStart = Date.now();
-                var panel = panels[team];
-                var path = createHoldBorder(panel);
+                var panel = panels[team]; var path = createHoldBorder(panel);
                 var totalLength = 400;
                 path.setAttribute('stroke-dasharray', '0 ' + totalLength);
                 path.setAttribute('stroke-dashoffset', totalLength);
-                startHoldBeep(); // звук удержания
+                startZahvatSound(); // включаем звук захвата
                 if (state.holdTimer) clearInterval(state.holdTimer);
                 var holdMs = state.holdSeconds * 1000;
                 state.holdTimer = setInterval(function() {
@@ -277,7 +248,7 @@
                     if (elapsed >= holdMs) {
                         clearInterval(state.holdTimer); state.holdTimer = null;
                         path.setAttribute('stroke-dasharray', '0 ' + totalLength);
-                        stopHoldBeep();
+                        stopZahvatSound(); // выключаем звук захвата
                         checkPassword(team); state.pendingTeam = null;
                     }
                 }, 100);
@@ -287,7 +258,7 @@
                 if (state.pendingTeam === team) state.pendingTeam = null;
                 var path = panels[team]?.querySelector('.border-path');
                 if (path) path.setAttribute('stroke-dasharray', '0 400');
-                stopHoldBeep();
+                stopZahvatSound(); // выключаем звук захвата при отпускании
             }
             function doCapture(team) { if (state.ended || !state.matchActive || state.currentHolder === team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
             function onPanelDown(team) { if (!state.matchActive || state.ended) return; if (state.holdSeconds > 0) startHold(team); else checkPassword(team); }
