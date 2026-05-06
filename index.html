@@ -22,21 +22,11 @@
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
         html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif; touch-action: manipulation; display: flex; flex-direction: column; }
 
-        .lock-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; padding: 20px; text-align: center; }
-        .lock-screen.hidden { display: none; }
-        .lock-screen h2 { font-size: 1.6rem; color: #e76f51; }
-        .lock-screen p { font-size: 1rem; opacity: 0.8; line-height: 1.5; max-width: 320px; }
-        .lock-screen .telegram-link { color: #2ea6ff; font-size: 1.2rem; font-weight: 700; text-decoration: none; padding: 12px 24px; border: 2px solid #2ea6ff; border-radius: 30px; display: inline-block; }
-        .device-id-box { background: #111; padding: 12px 16px; border-radius: 10px; font-family: monospace; font-size: 0.75rem; word-break: break-all; user-select: all; cursor: pointer; max-width: 320px; width: 100%; color: #ccc; }
-        .copy-hint { font-size: 0.75rem; opacity: 0; transition: opacity 0.3s; color: #2ecc71; }
-        .lock-footer { font-size: 0.7rem; opacity: 0.4; margin-top: 8px; }
-
         .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px; background: var(--surface); border-bottom: 2px solid rgba(255,255,255,0.08); flex-shrink: 0; z-index: 10; flex-wrap: nowrap; }
         .game-timer-box { display: flex; align-items: center; gap: 6px; background: #00000033; border-radius: 30px; padding: 4px 12px; backdrop-filter: blur(8px); }
         .game-timer-label { font-size: 0.75rem; letter-spacing: 1.5px; color: #aaa; font-weight: 600; text-transform: uppercase; }
         .game-timer-display { font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; color: #fff; text-shadow: 0 0 8px rgba(255,255,255,0.3); min-width: 72px; text-align: center; }
         .game-timer-display.warning { color: #e76f51; animation: pulse-warn 0.7s infinite; }
-        .trial-indicator { font-size: 0.55rem; opacity: 0.5; color: #aaa; margin-left: 4px; white-space: nowrap; }
         .btn-icon { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; font-size: 1.3rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; backdrop-filter: blur(4px); flex-shrink: 0; }
         .btn-icon:hover { background: rgba(255,255,255,0.2); }
         .btn-icon:active { transform: scale(0.92); }
@@ -57,6 +47,9 @@
         .team-panel.active-holder { animation: activeGlow 1.2s infinite; border-color: rgba(255, 255, 255, 0.7); }
         @keyframes activeGlow { 0%,100% { box-shadow: 0 0 30px rgba(255,255,255,0.6), inset 0 0 30px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 60px rgba(255,255,255,0.8), inset 0 0 50px rgba(255,255,255,0.15); } }
 
+        /* Заливка при удержании */
+        .hold-fill { position: absolute; inset: 0; background: rgba(255,255,255,0.3); z-index: 0; transform: scaleX(0); transform-origin: left; transition: none; }
+
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
         .modal { background: var(--surface); border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; padding: 24px 20px; max-width: 450px; width: 90%; display: flex; flex-direction: column; gap: 16px; }
@@ -69,9 +62,13 @@
         .setting-row input[type="text"]:read-only { opacity: 0.7; background: #1a1a24; }
         .setting-row input[type="color"] { width: 50px; height: 38px; border: none; background: transparent; cursor: pointer; }
         .modal-actions { display: flex; gap: 10px; justify-content: center; }
-        .modal-footer { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 0 4px; opacity: 0.7; }
-        .modal-footer img { height: 28px; width: 28px; object-fit: contain; }
+        .modal-footer { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 0 4px; opacity: 0.7; flex-wrap: wrap; }
+        .modal-footer img { height: 24px; width: 24px; object-fit: contain; }
         .modal-footer span { font-size: 0.7rem; color: #aaa; letter-spacing: 0.5px; }
+        .donate-link { display: inline-flex; align-items: center; gap: 6px; color: #e76f51; text-decoration: none; font-size: 0.75rem; font-weight: 600; padding: 4px 12px; border: 1px solid rgba(231,111,81,0.4); border-radius: 15px; transition: 0.2s; }
+        .donate-link:hover { background: rgba(231,111,81,0.2); border-color: #e76f51; }
+        .donate-heart { font-size: 1.1rem; animation: heartbeat 1.2s infinite; display: inline-block; }
+        @keyframes heartbeat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
         .btn { padding: 10px 20px; border-radius: 30px; border: none; font-weight: 700; font-size: 0.9rem; letter-spacing: 1px; cursor: pointer; text-transform: uppercase; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
         .btn:hover { background: rgba(255,255,255,0.2); }
         .btn.primary { background: var(--gold); color: #000; border-color: var(--gold); }
@@ -88,27 +85,13 @@
         .password-box .pass-buttons button { flex: 1; padding: 10px; border-radius: 14px; border: none; font-weight: 700; font-size: 1rem; cursor: pointer; }
         .password-box .pass-buttons .pass-ok { background: var(--gold); color: #000; }
         .password-box .pass-buttons .pass-cancel { background: rgba(255,255,255,0.1); color: #fff; }
-
-        .hold-progress { position: absolute; bottom: 0; left: 0; height: 6px; background: rgba(255,255,255,0.8); z-index: 3; width: 0%; border-radius: 0 0 18px 18px; }
     </style>
 </head>
 <body>
-    <div class="lock-screen hidden" id="lockScreen">
-        <h2>🔒 Пробный период истёк</h2>
-        <p>Для получения доступа напишите администратору:</p>
-        <a class="telegram-link" href="https://t.me/Ilnar_AI" target="_blank">@Ilnar_AI</a>
-        <p style="font-size:0.85rem;opacity:0.7;margin-top:8px;">Ваш ID устройства (нажмите, чтобы скопировать):</p>
-        <div class="device-id-box" id="deviceIdDisplay" onclick="copyDeviceId()"></div>
-        <p class="copy-hint" id="copyHint">✅ Скопировано!</p>
-        <p style="font-size:0.8rem;opacity:0.5;margin-top:4px;">После оплаты администратор активирует ваше устройство, и приложение заработает навсегда.</p>
-        <p class="lock-footer">на развитие страйкбола 🤩</p>
-    </div>
-
     <div class="topbar">
         <div class="game-timer-box">
             <span class="game-timer-label">⏱ МАТЧ</span>
             <span class="game-timer-display" id="gameTimerDisplay">10:00</span>
-            <span class="trial-indicator" id="trialIndicator"></span>
         </div>
         <div class="topbar-buttons">
             <button class="btn-icon" id="btnPlayPause" title="Старт / Пауза">▶</button>
@@ -153,70 +136,17 @@
                 </div>
             </div>
             <div class="modal-actions"><button class="btn primary" id="btnSaveSettings">💾 Сохранить</button><button class="btn danger" id="btnCloseSettings">✖ Закрыть</button></div>
-            <div class="modal-footer"><img src="logo6.png" alt="logo"><span>created by XAH CK Скорпион</span></div>
+            <div class="modal-footer">
+                <img src="logo6.png" alt="logo"><span>created by XAH CK Скорпион</span>
+                <a class="donate-link" href="https://www.tbank.ru/cf/1MigoYhAzjz" target="_blank"><span class="donate-heart">♥️</span> поддержать проект любой суммой</a>
+            </div>
         </div>
     </div>
 
     <script>
         if ('serviceWorker' in navigator) { window.addEventListener('load', function() { navigator.serviceWorker.register('sw.js').catch(function() {}); }); }
 
-        function copyDeviceId() {
-            var text = document.getElementById('deviceIdDisplay').textContent;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(text).then(function() {
-                    var hint = document.getElementById('copyHint');
-                    hint.style.opacity = '1';
-                    setTimeout(function() { hint.style.opacity = '0'; }, 2000);
-                });
-            }
-        }
-
         (function() {
-            const JSONBIN_BIN_ID = '69f9a562856a682189aa4915';
-            const JSONBIN_API_KEY = '$2a$10$dYI80f9TMdl5i01/t3Md8ea0lNY1JvpM4ILr4Ad5ZguD6fbdcSvTm';
-            const TRIAL_HOURS = 24;
-            var lockScreen = document.getElementById('lockScreen');
-            var trialIndicator = document.getElementById('trialIndicator');
-            var appLocked = false;
-
-            function generateFingerprint() { var d = [navigator.userAgent, navigator.language, screen.colorDepth, screen.width+'x'+screen.height].join('|'); var h = 0; for (var i = 0; i < d.length; i++) { h = ((h << 5) - h) + d.charCodeAt(i); h |= 0; } return 'dev-' + Math.abs(h).toString(36); }
-            function getDeviceId() { return generateFingerprint(); }
-
-            async function jsonbinGet() { var r = await fetch('https://api.jsonbin.io/v3/b/'+JSONBIN_BIN_ID+'/latest',{headers:{'X-Master-Key':JSONBIN_API_KEY}}); if(!r.ok) throw new Error('jsonbin'); return (await r.json()).record; }
-            async function jsonbinPut(data) { await fetch('https://api.jsonbin.io/v3/b/'+JSONBIN_BIN_ID,{method:'PUT',headers:{'X-Master-Key':JSONBIN_API_KEY,'Content-Type':'application/json'},body:JSON.stringify(data)}); }
-
-            function updateTrialIndicator() {
-                if (localStorage.getItem('activated') === 'true') { trialIndicator.textContent = ''; return; }
-                var ts = localStorage.getItem('trialStart');
-                if (!ts) { trialIndicator.textContent = '⏳ 24ч'; return; }
-                var rem = TRIAL_HOURS * 3600000 - (Date.now() - parseInt(ts));
-                if (rem <= 0) { trialIndicator.textContent = '🔒'; return; }
-                var h = Math.floor(rem / 3600000);
-                var m = Math.floor((rem % 3600000) / 60000);
-                trialIndicator.textContent = '⏳' + h + 'ч' + m + 'м';
-            }
-
-            async function checkLicense() {
-                var deviceId = getDeviceId();
-                if (localStorage.getItem('activated') === 'true') return 'activated';
-                var trialStart = localStorage.getItem('trialStart');
-                if (!trialStart) { localStorage.setItem('trialStart', Date.now().toString()); return 'trial'; }
-                if (Date.now() - parseInt(trialStart) < TRIAL_HOURS * 3600000) return 'trial';
-                try {
-                    var data = await jsonbinGet();
-                    if (Array.isArray(data.activated) && data.activated.includes(deviceId)) { localStorage.setItem('activated','true'); return 'activated'; }
-                    if (Array.isArray(data.trials) && data.trials.includes(deviceId)) return 'expired';
-                    if (!Array.isArray(data.trials)) data.trials = [];
-                    data.trials.push(deviceId); await jsonbinPut(data);
-                    localStorage.setItem('trialStart', Date.now().toString()); return 'trial';
-                } catch(e) {
-                    var offlineGrace = localStorage.getItem('offlineGraceStart');
-                    if (!offlineGrace) { localStorage.setItem('offlineGraceStart', Date.now().toString()); return 'offline_grace'; }
-                    if (Date.now() - parseInt(offlineGrace) < 3600000) return 'offline_grace';
-                    return 'expired';
-                }
-            }
-
             var state = {
                 matchDuration: 600, timeLeft: 600, matchActive: false, ended: false, currentHolder: null,
                 times: { A: 0, B: 0, C: 0, D: 0 }, teamCount: 2,
@@ -278,7 +208,6 @@
                 btnEndGame.style.display = state.ended ? 'flex' : 'none';
                 btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
                 if (state.matchActive) btnPlayPause.classList.add('active'); else btnPlayPause.classList.remove('active');
-                updateTrialIndicator();
             }
 
             function checkPassword(team) { if (!state.lockCode) { doCapture(team); return; } state.passTargetTeam = team; passwordInput.value = ''; passwordOverlay.classList.add('active'); setTimeout(function() { passwordInput.focus(); }, 100); }
@@ -286,16 +215,32 @@
             passCancel.addEventListener('click', function() { passwordOverlay.classList.remove('active'); state.passTargetTeam = null; });
             passwordInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { passOk.click(); } });
 
-            function startHold(team) { if (!state.matchActive || state.ended) return; if (state.currentHolder === team) return; state.pendingTeam = team; state.holdStart = Date.now(); var panel = panels[team]; var bar = panel.querySelector('.hold-progress'); if (!bar) { bar = document.createElement('div'); bar.className = 'hold-progress'; panel.appendChild(bar); } bar.style.width = '0%'; if (state.holdTimer) clearInterval(state.holdTimer); var holdMs = state.holdSeconds * 1000; state.holdTimer = setInterval(function() { var elapsed = Date.now() - state.holdStart; var pct = Math.min(100, (elapsed / holdMs) * 100); bar.style.width = pct + '%'; if (elapsed >= holdMs) { clearInterval(state.holdTimer); state.holdTimer = null; bar.style.width = '0%'; checkPassword(team); state.pendingTeam = null; } }, 100); }
-            function cancelHold(team) { if (state.holdTimer) { clearInterval(state.holdTimer); state.holdTimer = null; } if (state.pendingTeam === team) state.pendingTeam = null; var bar = panels[team]?.querySelector('.hold-progress'); if (bar) bar.style.width = '0%'; }
+            function startHold(team) {
+                if (!state.matchActive || state.ended) return;
+                if (state.currentHolder === team) return;
+                state.pendingTeam = team; state.holdStart = Date.now();
+                var panel = panels[team];
+                var fill = panel.querySelector('.hold-fill');
+                if (!fill) { fill = document.createElement('div'); fill.className = 'hold-fill'; panel.appendChild(fill); }
+                fill.style.transform = 'scaleX(0)';
+                if (state.holdTimer) clearInterval(state.holdTimer);
+                var holdMs = state.holdSeconds * 1000;
+                state.holdTimer = setInterval(function() {
+                    var elapsed = Date.now() - state.holdStart;
+                    var pct = Math.min(1, elapsed / holdMs);
+                    fill.style.transform = 'scaleX(' + pct + ')';
+                    if (elapsed >= holdMs) { clearInterval(state.holdTimer); state.holdTimer = null; fill.style.transform = 'scaleX(0)'; checkPassword(team); state.pendingTeam = null; }
+                }, 100);
+            }
+            function cancelHold(team) { if (state.holdTimer) { clearInterval(state.holdTimer); state.holdTimer = null; } if (state.pendingTeam === team) state.pendingTeam = null; var fill = panels[team]?.querySelector('.hold-fill'); if (fill) fill.style.transform = 'scaleX(0)'; }
             function doCapture(team) { if (state.ended || !state.matchActive || state.currentHolder === team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
             function onPanelDown(team) { if (!state.matchActive || state.ended) return; if (state.holdSeconds > 0) startHold(team); else checkPassword(team); }
             function onPanelUp(team) { if (state.holdSeconds > 0) cancelHold(team); }
 
             function proceedStartMatch() { state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; state.lastTick = Date.now(); if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100); updateUI(); }
-            function startMatch() { if (appLocked) return; if (state.ended) resetMatch(); if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); } else proceedStartMatch(); }
+            function startMatch() { if (state.ended) resetMatch(); if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); } else proceedStartMatch(); }
             function pauseMatch() { state.matchActive = false; stopTickSound(); stopSiren(); updateUI(); }
-            function toggleMatch() { if (appLocked) return; if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
+            function toggleMatch() { if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
             function resetMatch() { pauseMatch(); state.timeLeft = state.matchDuration; state.ended = false; state.currentHolder = null; state.times = { A:0,B:0,C:0,D:0 }; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; stopSiren(); if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; } updateUI(); btnEndGame.style.display = 'none'; }
             function endMatchByTimer() { state.matchActive = false; state.ended = true; state.currentHolder = null; stopTickSound(); startSiren(); updateUI(); }
             function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); }
@@ -371,29 +316,7 @@
                 if (e.key === 's') { openSettings(); e.preventDefault(); } if (e.key === 'Escape') { closeSettings(); }
             });
 
-            (async function init() {
-                loadSettings(); renderPanels(); updateUI(); preloadAudioFiles();
-                var license = await checkLicense();
-                if (license === 'expired') {
-                    appLocked = true;
-                    lockScreen.classList.remove('hidden');
-                    document.getElementById('deviceIdDisplay').textContent = getDeviceId();
-                } else {
-                    appLocked = false;
-                    lockScreen.classList.add('hidden');
-                }
-                updateTrialIndicator();
-                setInterval(async function() {
-                    if (appLocked) {
-                        var newLicense = await checkLicense();
-                        if (newLicense === 'activated') {
-                            appLocked = false;
-                            lockScreen.classList.add('hidden');
-                        }
-                    }
-                    updateTrialIndicator();
-                }, 30000);
-            })();
+            loadSettings(); renderPanels(); updateUI(); preloadAudioFiles();
         })();
     </script>
 </body>
