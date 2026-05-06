@@ -67,6 +67,7 @@
         .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
         .setting-row label { font-weight: 600; font-size: 0.9rem; color: #ccc; flex: 1; }
         .setting-row input[type="number"], .setting-row input[type="text"], .setting-row input[type="password"], .setting-row select { background: #0f0f17; border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 10px; border-radius: 14px; font-size: 1rem; font-weight: 700; text-align: center; width: 100px; }
+        .setting-row input[type="range"] { width: 120px; accent-color: var(--gold); }
         .setting-row select { width: 120px; }
         .setting-row input[type="text"]:read-only { opacity: 0.7; background: #1a1a24; }
         .setting-row input[type="color"] { width: 50px; height: 38px; border: none; background: transparent; cursor: pointer; }
@@ -123,8 +124,12 @@
             <div class="setting-row"><label>⏳ Длительность матча (мин)</label><input type="number" id="inputMatchMin" value="10" min="1" max="120"></div>
             <div class="setting-row"><label>👥 Количество команд</label><select id="inputTeamCount"><option value="2">2 команды</option><option value="3">3 команды</option><option value="4">4 команды</option></select></div>
             <div class="setting-row">
-                <label>⏱ Удержание 5 сек</label>
+                <label>⏱ Удержание</label>
                 <label class="toggle-switch"><input type="checkbox" id="inputHoldMode"><span class="toggle-slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <label>⏱ Секунд удержания: <span id="holdSecondsLabel">5</span></label>
+                <input type="range" id="inputHoldSeconds" min="1" max="10" value="5" step="1">
             </div>
             <div class="setting-row">
                 <label>🔐 Кодовый замок</label>
@@ -140,7 +145,7 @@
                     <div class="setting-row"><label>🎨 Цвет команды C</label><input type="color" id="inputColorC" value="#2ecc71"></div>
                 </div>
                 <div id="teamDPanel" class="hidden">
-                    <div class="setting-row"><label>🟡 Название команды D</label><input type="text" id="inputNameD" value="ЖЁЛТЫЕ" readonly></div>
+                    <div class="setting-row"><label>🟠 Название команды D</label><input type="text" id="inputNameD" value="ОРАНЖЕВЫЕ" readonly></div>
                     <div class="setting-row"><label>🎨 Цвет команды D</label><input type="color" id="inputColorD" value="#f39c12"></div>
                 </div>
             </div>
@@ -162,19 +167,12 @@
             var state = {
                 matchDuration: 600, timeLeft: 600, matchActive: false, ended: false, currentHolder: null,
                 times: { A: 0, B: 0, C: 0, D: 0 }, teamCount: 2,
-                teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ЖЁЛТЫЕ' },
+                teamNames: { A: 'КРАСНЫЕ', B: 'СИНИЕ', C: 'ЗЕЛЁНЫЕ', D: 'ОРАНЖЕВЫЕ' },
                 teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
                 lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
                 audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false,
-                // Новые настройки
-                holdMode: false,        // удержание 5 сек
-                lockCode: '',           // пароль (пусто = выкл)
-                // Состояние удержания
-                holdTimer: null,
-                holdStart: null,
-                pendingTeam: null,
-                // Состояние пароля
-                passTargetTeam: null
+                holdMode: false, holdSeconds: 5, lockCode: '',
+                holdTimer: null, holdStart: null, pendingTeam: null, passTargetTeam: null
             };
 
             var mainArena = document.getElementById('mainArena'), gameTimerDisplay = document.getElementById('gameTimerDisplay'),
@@ -182,6 +180,7 @@
                 btnSettings = document.getElementById('btnSettings'), btnEndGame = document.getElementById('btnEndGame'),
                 modalOverlay = document.getElementById('modalOverlay'), inputMatchMin = document.getElementById('inputMatchMin'),
                 inputTeamCount = document.getElementById('inputTeamCount'), inputHoldMode = document.getElementById('inputHoldMode'),
+                inputHoldSeconds = document.getElementById('inputHoldSeconds'), holdSecondsLabel = document.getElementById('holdSecondsLabel'),
                 inputLockCode = document.getElementById('inputLockCode'),
                 inputNameA = document.getElementById('inputNameA'), inputColorA = document.getElementById('inputColorA'),
                 inputNameB = document.getElementById('inputNameB'), inputColorB = document.getElementById('inputColorB'),
@@ -193,14 +192,32 @@
                 passOk = document.getElementById('passOk'), passCancel = document.getElementById('passCancel'),
                 panels = {};
 
+            // Обновление метки ползунка
+            inputHoldSeconds.addEventListener('input', function() { holdSecondsLabel.textContent = this.value; });
+
             function getAudioContext() { if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (state.audioCtx.state === 'suspended') state.audioCtx.resume(); return state.audioCtx; }
             function loadAudioFile(url, cb) { fetch(url).then(function(r) { return r.ok ? r.arrayBuffer() : null; }).then(function(b) { return b ? getAudioContext().decodeAudioData(b) : null; }).then(function(d) { if (d && cb) cb(url, d); }); }
             function preloadAudioFiles() {
                 if (state.audioLoaded) return;
-                ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); });
+                ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3','orange.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); });
                 setTimeout(function() { state.audioLoaded = true; }, 3000);
             }
-            function getSoundForColor(hex) { hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); if (r > 200 && g > 180 && b < 100) return 'zeltie.mp3'; if (r > 200 && g > 200 && b > 200) return 'bel.mp3'; if (r > g && r > b) return 'kras.mp3'; if (b > r && b > g) return 'sinie.mp3'; if (g > r && g > b) return 'zelen.mp3'; return 'kras.mp3'; }
+            function getSoundForColor(hex) {
+                hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+                // Оранжевый: красный > 200, зелёный 80-180, синий < 100
+                if (r > 200 && g > 80 && g < 180 && b < 100) return 'orange.mp3';
+                // Жёлтый: красный > 200, зелёный > 180, синий < 100
+                if (r > 200 && g > 180 && b < 100) return 'zeltie.mp3';
+                // Белый
+                if (r > 200 && g > 200 && b > 200) return 'bel.mp3';
+                // Красный
+                if (r > g && r > b) return 'kras.mp3';
+                // Синий
+                if (b > r && b > g) return 'sinie.mp3';
+                // Зелёный
+                if (g > r && g > b) return 'zelen.mp3';
+                return 'kras.mp3';
+            }
             function playBuffer(buf, loop) { if (!buf) return; var ctx = getAudioContext(), src = ctx.createBufferSource(); src.buffer = buf; src.loop = !!loop; src.connect(ctx.destination); src.start(0); return src; }
             function playCaptureSound(color) { if (!state.audioLoaded) return; var f = getSoundForColor(color); if (state.buffers[f]) playBuffer(state.buffers[f], false); }
             function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
@@ -224,7 +241,7 @@
                     p.querySelector('.team-time').textContent = formatTime(state.times[t]);
                     var txt = 'ОЖИДАЙТЕ СТАРТА';
                     if (state.ended) { var w = getWinningTeam(); txt = (t===w&&w)?'🏆 ПОБЕДИТЕЛЬ':''; }
-                    else if (state.matchActive) txt = state.currentHolder===t ? '⚡ УДЕРЖАНИЕ' : (state.holdMode ? 'УДЕРЖИВАЙТЕ 5 сек' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА');
+                    else if (state.matchActive) txt = state.currentHolder===t ? '⚡ УДЕРЖАНИЕ' : (state.holdMode ? 'УДЕРЖИВАЙТЕ '+state.holdSeconds+' сек' : 'НАЖМИТЕ ДЛЯ ЗАХВАТА');
                     p.querySelector('.team-status').textContent = txt;
                     p.classList.remove('active-holder','dimmed','inactive-for-start');
                     if (!state.matchActive && !state.ended) p.classList.add('inactive-for-start');
@@ -235,78 +252,32 @@
                 if (state.matchActive) btnPlayPause.classList.add('active'); else btnPlayPause.classList.remove('active');
             }
 
-            // Проверка пароля
-            function checkPassword(team) {
-                if (!state.lockCode) { doCapture(team); return; }
-                state.passTargetTeam = team;
-                passwordInput.value = '';
-                passwordOverlay.classList.add('active');
-                setTimeout(function() { passwordInput.focus(); }, 100);
-            }
-
-            passOk.addEventListener('click', function() {
-                var entered = passwordInput.value.trim();
-                passwordOverlay.classList.remove('active');
-                if (entered === state.lockCode && state.passTargetTeam) {
-                    doCapture(state.passTargetTeam);
-                }
-                state.passTargetTeam = null;
-            });
-            passCancel.addEventListener('click', function() {
-                passwordOverlay.classList.remove('active');
-                state.passTargetTeam = null;
-            });
+            function checkPassword(team) { if (!state.lockCode) { doCapture(team); return; } state.passTargetTeam = team; passwordInput.value = ''; passwordOverlay.classList.add('active'); setTimeout(function() { passwordInput.focus(); }, 100); }
+            passOk.addEventListener('click', function() { var entered = passwordInput.value.trim(); passwordOverlay.classList.remove('active'); if (entered === state.lockCode && state.passTargetTeam) { doCapture(state.passTargetTeam); } state.passTargetTeam = null; });
+            passCancel.addEventListener('click', function() { passwordOverlay.classList.remove('active'); state.passTargetTeam = null; });
             passwordInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { passOk.click(); } });
 
-            // Удержание 5 секунд
             function startHold(team) {
                 if (!state.matchActive || state.ended) return;
                 if (state.currentHolder === team) return;
-                state.pendingTeam = team;
-                state.holdStart = Date.now();
-                var panel = panels[team];
-                var bar = panel.querySelector('.hold-progress');
-                if (!bar) {
-                    bar = document.createElement('div'); bar.className = 'hold-progress'; panel.appendChild(bar);
-                }
+                state.pendingTeam = team; state.holdStart = Date.now();
+                var panel = panels[team]; var bar = panel.querySelector('.hold-progress');
+                if (!bar) { bar = document.createElement('div'); bar.className = 'hold-progress'; panel.appendChild(bar); }
                 bar.style.width = '0%';
                 if (state.holdTimer) clearInterval(state.holdTimer);
+                var holdMs = state.holdSeconds * 1000;
                 state.holdTimer = setInterval(function() {
                     var elapsed = Date.now() - state.holdStart;
-                    var pct = Math.min(100, (elapsed / 5000) * 100);
+                    var pct = Math.min(100, (elapsed / holdMs) * 100);
                     bar.style.width = pct + '%';
-                    if (elapsed >= 5000) {
-                        clearInterval(state.holdTimer); state.holdTimer = null;
-                        bar.style.width = '0%';
-                        checkPassword(team);
-                        state.pendingTeam = null;
-                    }
+                    if (elapsed >= holdMs) { clearInterval(state.holdTimer); state.holdTimer = null; bar.style.width = '0%'; checkPassword(team); state.pendingTeam = null; }
                 }, 100);
             }
+            function cancelHold(team) { if (state.holdTimer) { clearInterval(state.holdTimer); state.holdTimer = null; } if (state.pendingTeam === team) state.pendingTeam = null; var bar = panels[team]?.querySelector('.hold-progress'); if (bar) bar.style.width = '0%'; }
 
-            function cancelHold(team) {
-                if (state.holdTimer) { clearInterval(state.holdTimer); state.holdTimer = null; }
-                if (state.pendingTeam === team) state.pendingTeam = null;
-                var bar = panels[team]?.querySelector('.hold-progress');
-                if (bar) bar.style.width = '0%';
-            }
-
-            function doCapture(team) {
-                if (state.ended || !state.matchActive || state.currentHolder === team) return;
-                state.currentHolder = team;
-                playCaptureSound(state.teamColors[team]);
-                startTickSound();
-                updateUI();
-            }
-
-            function onPanelDown(team) {
-                if (!state.matchActive || state.ended) return;
-                if (state.holdMode) startHold(team);
-                else checkPassword(team);
-            }
-            function onPanelUp(team) {
-                if (state.holdMode) cancelHold(team);
-            }
+            function doCapture(team) { if (state.ended || !state.matchActive || state.currentHolder === team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
+            function onPanelDown(team) { if (!state.matchActive || state.ended) return; if (state.holdMode) startHold(team); else checkPassword(team); }
+            function onPanelUp(team) { if (state.holdMode) cancelHold(team); }
 
             function proceedStartMatch() { state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; state.lastTick = Date.now(); if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100); updateUI(); }
             function startMatch() { if (state.ended) resetMatch(); if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); } else proceedStartMatch(); }
@@ -345,7 +316,17 @@
                 }
             }
 
-            function getColorName(hex) { hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16); if (r > 200 && g > 180 && b < 100) return 'Жёлтые'; if (r > 200 && g > 200 && b > 200) return 'Белые'; if (r < 50 && g < 50 && b < 50) return 'Чёрные'; if (r > g && r > b && r > 100) return 'Красные'; if (g > r && g > b && g > 100) return 'Зелёные'; if (b > r && b > g && b > 100) return 'Синие'; return 'Команда'; }
+            function getColorName(hex) {
+                hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+                if (r > 200 && g > 80 && g < 180 && b < 100) return 'Оранжевые';
+                if (r > 200 && g > 180 && b < 100) return 'Жёлтые';
+                if (r > 200 && g > 200 && b > 200) return 'Белые';
+                if (r < 50 && g < 50 && b < 50) return 'Чёрные';
+                if (r > g && r > b && r > 100) return 'Красные';
+                if (g > r && g > b && g > 100) return 'Зелёные';
+                if (b > r && b > g && b > 100) return 'Синие';
+                return 'Команда';
+            }
             inputColorA.addEventListener('input', function() { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
             inputColorB.addEventListener('input', function() { if (inputNameB.readOnly) inputNameB.value = getColorName(inputColorB.value); });
             inputColorC.addEventListener('input', function() { if (inputNameC.readOnly) inputNameC.value = getColorName(inputColorC.value); });
@@ -353,7 +334,8 @@
             inputTeamCount.addEventListener('change', function() { var v = parseInt(inputTeamCount.value); teamCPanel.classList.toggle('hidden', v < 3); teamDPanel.classList.toggle('hidden', v < 4); });
             function openSettings() {
                 inputMatchMin.value = Math.round(state.matchDuration/60); inputTeamCount.value = state.teamCount;
-                inputHoldMode.checked = state.holdMode; inputLockCode.value = state.lockCode;
+                inputHoldMode.checked = state.holdMode; inputHoldSeconds.value = state.holdSeconds; holdSecondsLabel.textContent = state.holdSeconds;
+                inputLockCode.value = state.lockCode;
                 inputNameA.value = state.teamNames.A; inputColorA.value = state.teamColors.A; inputNameB.value = state.teamNames.B; inputColorB.value = state.teamColors.B;
                 inputNameC.value = state.teamNames.C; inputColorC.value = state.teamColors.C; inputNameD.value = state.teamNames.D; inputColorD.value = state.teamColors.D;
                 teamCPanel.classList.toggle('hidden', state.teamCount < 3); teamDPanel.classList.toggle('hidden', state.teamCount < 4); modalOverlay.classList.add('open');
@@ -365,14 +347,14 @@
                 if (state.teamCount >= 3) state.teamNames.C = inputNameC.value.trim() || 'C'; if (state.teamCount >= 4) state.teamNames.D = inputNameD.value.trim() || 'D';
                 state.teamColors.A = inputColorA.value; state.teamColors.B = inputColorB.value;
                 if (state.teamCount >= 3) state.teamColors.C = inputColorC.value; if (state.teamCount >= 4) state.teamColors.D = inputColorD.value;
-                state.holdMode = inputHoldMode.checked;
+                state.holdMode = inputHoldMode.checked; state.holdSeconds = parseInt(inputHoldSeconds.value) || 5;
                 state.lockCode = inputLockCode.value.trim();
-                localStorage.setItem('appSettings', JSON.stringify({ teamCount: state.teamCount, names: state.teamNames, colors: state.teamColors, matchDuration: state.matchDuration, holdMode: state.holdMode, lockCode: state.lockCode }));
+                localStorage.setItem('appSettings', JSON.stringify({ teamCount: state.teamCount, names: state.teamNames, colors: state.teamColors, matchDuration: state.matchDuration, holdMode: state.holdMode, holdSeconds: state.holdSeconds, lockCode: state.lockCode }));
                 renderPanels(); resetMatch(); closeSettings(); updateUI();
             }
             function loadSettings() {
                 var saved = localStorage.getItem('appSettings');
-                if (saved) { try { var d = JSON.parse(saved); state.teamCount = d.teamCount || 2; state.teamNames = d.names || state.teamNames; state.teamColors = d.colors || state.teamColors; state.matchDuration = d.matchDuration || 600; state.holdMode = d.holdMode || false; state.lockCode = d.lockCode || ''; } catch(e) {} }
+                if (saved) { try { var d = JSON.parse(saved); state.teamCount = d.teamCount || 2; state.teamNames = d.names || state.teamNames; state.teamColors = d.colors || state.teamColors; state.matchDuration = d.matchDuration || 600; state.holdMode = d.holdMode || false; state.holdSeconds = d.holdSeconds || 5; state.lockCode = d.lockCode || ''; } catch(e) {} }
                 state.timeLeft = state.matchDuration;
             }
 
