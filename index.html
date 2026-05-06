@@ -47,11 +47,13 @@
         .team-panel.active-holder { animation: activeGlow 1.2s infinite; border-color: rgba(255, 255, 255, 0.7); }
         @keyframes activeGlow { 0%,100% { box-shadow: 0 0 30px rgba(255,255,255,0.6), inset 0 0 30px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 60px rgba(255,255,255,0.8), inset 0 0 50px rgba(255,255,255,0.15); } }
 
-        /* Обводка по периметру — яркая, с пульсацией */
+        /* Обводка — через div'ы, одинаковая толщина */
         .hold-border { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: 18px; }
-        .hold-border svg { width: 100%; height: 100%; }
-        .hold-border .border-path { fill: none; stroke: #ffffff; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)); animation: border-pulse 0.5s infinite alternate; }
-        @keyframes border-pulse { from { filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)); } to { filter: drop-shadow(0 0 14px rgba(255,255,255,1)); } }
+        .hold-line { position: absolute; background: #ffffff; box-shadow: 0 0 8px 2px var(--hold-glow, rgba(255,255,255,0.9)); }
+        .hold-line-top { top: 0; left: 0; height: 4px; width: 0%; }
+        .hold-line-right { top: 0; right: 0; width: 4px; height: 0%; }
+        .hold-line-bottom { bottom: 0; right: 0; height: 4px; width: 0%; }
+        .hold-line-left { bottom: 0; left: 0; width: 4px; height: 0%; }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
@@ -222,33 +224,57 @@
             passCancel.addEventListener('click', function() { passwordOverlay.classList.remove('active'); state.passTargetTeam = null; });
             passwordInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { passOk.click(); } });
 
+            // Обводка через div'ы — одинаковая толщина
             function createHoldBorder(panel) {
                 var border = panel.querySelector('.hold-border');
-                if (!border) { border = document.createElement('div'); border.className = 'hold-border'; border.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><path class="border-path" d="M 10,5 L 90,5 Q 95,5 95,10 L 95,90 Q 95,95 90,95 L 10,95 Q 5,95 5,90 L 5,10 Q 5,5 10,5 Z" stroke-dasharray="0 400" stroke-dashoffset="400"/></svg>'; panel.appendChild(border); }
-                return border.querySelector('.border-path');
+                if (!border) {
+                    border = document.createElement('div'); border.className = 'hold-border';
+                    ['top','right','bottom','left'].forEach(function(side) {
+                        var line = document.createElement('div');
+                        line.className = 'hold-line hold-line-' + side;
+                        border.appendChild(line);
+                    });
+                    panel.appendChild(border);
+                }
+                return {
+                    top: border.querySelector('.hold-line-top'),
+                    right: border.querySelector('.hold-line-right'),
+                    bottom: border.querySelector('.hold-line-bottom'),
+                    left: border.querySelector('.hold-line-left')
+                };
             }
 
             function startHold(team) {
                 if (!state.matchActive || state.ended) return;
                 if (state.currentHolder === team) return;
                 state.pendingTeam = team; state.holdStart = Date.now();
-                var panel = panels[team]; var path = createHoldBorder(panel);
-                var totalLength = 400;
-                path.setAttribute('stroke-dasharray', '0 ' + totalLength);
-                path.setAttribute('stroke-dashoffset', totalLength);
-                startZahvatSound(); // включаем звук захвата
+                var panel = panels[team];
+                var border = createHoldBorder(panel);
+                // Устанавливаем цветное свечение
+                var glowColor = state.teamColors[team];
+                border.top.style.boxShadow = '0 0 8px 2px ' + glowColor;
+                border.right.style.boxShadow = '0 0 8px 2px ' + glowColor;
+                border.bottom.style.boxShadow = '0 0 8px 2px ' + glowColor;
+                border.left.style.boxShadow = '0 0 8px 2px ' + glowColor;
+                // Сбрасываем
+                border.top.style.width = '0%'; border.right.style.height = '0%';
+                border.bottom.style.width = '0%'; border.left.style.height = '0%';
+                startZahvatSound();
                 if (state.holdTimer) clearInterval(state.holdTimer);
                 var holdMs = state.holdSeconds * 1000;
                 state.holdTimer = setInterval(function() {
                     var elapsed = Date.now() - state.holdStart;
                     var pct = Math.min(1, elapsed / holdMs);
-                    var drawn = totalLength * pct;
-                    path.setAttribute('stroke-dasharray', drawn + ' ' + (totalLength - drawn));
-                    path.setAttribute('stroke-dashoffset', '0');
+                    var quarter = pct * 4;
+                    if (quarter <= 1) { border.top.style.width = (quarter*100) + '%'; border.right.style.height = '0%'; border.bottom.style.width = '0%'; border.left.style.height = '0%'; }
+                    else if (quarter <= 2) { border.top.style.width = '100%'; border.right.style.height = ((quarter-1)*100) + '%'; border.bottom.style.width = '0%'; border.left.style.height = '0%'; }
+                    else if (quarter <= 3) { border.top.style.width = '100%'; border.right.style.height = '100%'; border.bottom.style.width = ((quarter-2)*100) + '%'; border.left.style.height = '0%'; }
+                    else { border.top.style.width = '100%'; border.right.style.height = '100%'; border.bottom.style.width = '100%'; border.left.style.height = Math.min(100, ((quarter-3)*100)) + '%'; }
                     if (elapsed >= holdMs) {
                         clearInterval(state.holdTimer); state.holdTimer = null;
-                        path.setAttribute('stroke-dasharray', '0 ' + totalLength);
-                        stopZahvatSound(); // выключаем звук захвата
+                        border.top.style.width = '0%'; border.right.style.height = '0%';
+                        border.bottom.style.width = '0%'; border.left.style.height = '0%';
+                        stopZahvatSound();
                         checkPassword(team); state.pendingTeam = null;
                     }
                 }, 100);
@@ -256,9 +282,12 @@
             function cancelHold(team) {
                 if (state.holdTimer) { clearInterval(state.holdTimer); state.holdTimer = null; }
                 if (state.pendingTeam === team) state.pendingTeam = null;
-                var path = panels[team]?.querySelector('.border-path');
-                if (path) path.setAttribute('stroke-dasharray', '0 400');
-                stopZahvatSound(); // выключаем звук захвата при отпускании
+                var panel = panels[team];
+                if (panel) {
+                    var border = panel.querySelector('.hold-line-top');
+                    if (border) { border.style.width = '0%'; panel.querySelector('.hold-line-right').style.height = '0%'; panel.querySelector('.hold-line-bottom').style.width = '0%'; panel.querySelector('.hold-line-left').style.height = '0%'; }
+                }
+                stopZahvatSound();
             }
             function doCapture(team) { if (state.ended || !state.matchActive || state.currentHolder === team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
             function onPanelDown(team) { if (!state.matchActive || state.ended) return; if (state.holdSeconds > 0) startHold(team); else checkPassword(team); }
