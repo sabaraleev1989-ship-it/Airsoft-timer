@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scorptimer-v1';
+const CACHE_NAME = 'scorptimer-v2';
 const urlsToCache = [
   'index.html',
   'manifest.json',
@@ -38,9 +38,20 @@ self.addEventListener('activate', function(event) {
 });
 
 self.addEventListener('fetch', function(event) {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then(function(response) {
-      return response || fetch(event.request);
+    caches.match(event.request, { ignoreSearch: true }).then(function(response) {
+      return response || fetch(event.request).then(function(networkResponse) {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaqueredirect') {
+          const clonedResponse = networkResponse.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(event.request, clonedResponse);
+          });
+        }
+        return networkResponse;
+      }).catch(function() {
+        return caches.match(event.request);
+      });
     })
   );
 });
