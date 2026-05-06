@@ -116,9 +116,7 @@
 
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js').then(function() {}).catch(function() {});
-            });
+            window.addEventListener('load', function() { navigator.serviceWorker.register('sw.js').catch(function() {}); });
         }
 
         (function() {
@@ -144,7 +142,7 @@
                 btnCloseSettings = document.getElementById('btnCloseSettings'), panels = {};
 
             function getAudioContext() { if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (state.audioCtx.state === 'suspended') state.audioCtx.resume(); return state.audioCtx; }
-            function loadAudioFile(url, cb) { fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(b => b ? getAudioContext().decodeAudioData(b) : null).then(d => { if (d && cb) cb(url, d); }); }
+            function loadAudioFile(url, cb) { fetch(url).then(function(r) { return r.ok ? r.arrayBuffer() : null; }).then(function(b) { return b ? getAudioContext().decodeAudioData(b) : null; }).then(function(d) { if (d && cb) cb(url, d); }); }
             function preloadAudioFiles() {
                 if (state.audioLoaded) return;
                 ['siren.mp3','siren1.mp3','siren2.mp3','siren3.mp3','start.mp3','kras.mp3','sinie.mp3','zelen.mp3','zeltie.mp3','bel.mp3','orange.mp3'].forEach(function(f) { loadAudioFile(f, function(n, b) { state.buffers[n] = b; }); });
@@ -152,24 +150,18 @@
             }
             function getSoundForColor(hex) {
                 hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
-                // Оранжевый: красный > 200, зелёный > 80 и < 180, синий < 80
-                if (r > 200 && g > 80 && g < 180 && b < 80) return 'orange.mp3';
-                // Жёлтый: красный > 200, зелёный > 180, синий < 80
+                // Оранжевый: красный > 200, зелёный 80-180, синий < 100
+                if (r > 200 && g > 80 && g < 180 && b < 100) return 'orange.mp3';
+                // Жёлтый: красный > 200, зелёный > 180, синий < 100
                 if (r > 200 && g > 180 && b < 100) return 'zeltie.mp3';
                 // Белый
                 if (r > 200 && g > 200 && b > 200) return 'bel.mp3';
-                // Красный (доминирует)
+                // Красный
                 if (r > g && r > b) return 'kras.mp3';
-                // Синий (доминирует)
+                // Синий
                 if (b > r && b > g) return 'sinie.mp3';
-                // Зелёный (доминирует)
+                // Зелёный
                 if (g > r && g > b) return 'zelen.mp3';
-                // Розовый (красный + синий)
-                if (r > 180 && b > 150) return 'kras.mp3';
-                // Голубой (зелёный + синий)
-                if (g > 180 && b > 150) return 'sinie.mp3';
-                // Фиолетовый (красный + синий)
-                if (r > 120 && b > 180) return 'sinie.mp3';
                 return 'kras.mp3';
             }
             function playBuffer(buf, loop) { if (!buf) return; var ctx = getAudioContext(), src = ctx.createBufferSource(); src.buffer = buf; src.loop = !!loop; src.connect(ctx.destination); src.start(0); return src; }
@@ -249,11 +241,20 @@
             }
             function getColorName(hex) {
                 hex = hex.replace('#','').toLowerCase(); var r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
-                if (r > 200 && g > 80 && g < 180 && b < 80) return 'Оранжевые';
+                // Оранжевый: красный > 200, зелёный 80-180, синий < 100
+                if (r > 200 && g > 80 && g < 180 && b < 100) return 'Оранжевые';
+                // Жёлтый: красный > 200, зелёный > 180, синий < 100
                 if (r > 200 && g > 180 && b < 100) return 'Жёлтые';
-                if (r > 200 && g > 200 && b > 200) return 'Белые'; if (r < 50 && g < 50 && b < 50) return 'Чёрные';
-                if (r > g && r > b && r > 100) return 'Красные'; if (g > r && g > b && g > 100) return 'Зелёные'; if (b > r && b > g && b > 100) return 'Синие';
-                if (r > 180 && b > 150) return 'Розовые'; if (g > 180 && b > 150) return 'Голубые'; if (r > 120 && b > 180) return 'Фиолетовые';
+                // Белый
+                if (r > 200 && g > 200 && b > 200) return 'Белые';
+                // Чёрный
+                if (r < 50 && g < 50 && b < 50) return 'Чёрные';
+                // Красный
+                if (r > g && r > b && r > 100) return 'Красные';
+                // Зелёный
+                if (g > r && g > b && g > 100) return 'Зелёные';
+                // Синий
+                if (b > r && b > g && b > 100) return 'Синие';
                 return 'Команда';
             }
             inputColorA.addEventListener('input', function() { if (inputNameA.readOnly) inputNameA.value = getColorName(inputColorA.value); });
