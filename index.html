@@ -47,10 +47,11 @@
         .team-panel.active-holder { animation: activeGlow 1.2s infinite; border-color: rgba(255, 255, 255, 0.7); }
         @keyframes activeGlow { 0%,100% { box-shadow: 0 0 30px rgba(255,255,255,0.6), inset 0 0 30px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 60px rgba(255,255,255,0.8), inset 0 0 50px rgba(255,255,255,0.15); } }
 
-        /* Обводка по периметру — яркая, толстая, плавная */
+        /* Обводка по периметру — яркая, с пульсацией, звук через Web Audio */
         .hold-border { position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: 18px; }
         .hold-border svg { width: 100%; height: 100%; }
-        .hold-border .border-path { fill: none; stroke: #ffffff; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255,255,255,0.8)); }
+        .hold-border .border-path { fill: none; stroke: #ffffff; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)); animation: border-pulse 0.5s infinite alternate; }
+        @keyframes border-pulse { from { filter: drop-shadow(0 0 6px rgba(255,255,255,0.9)); } to { filter: drop-shadow(0 0 14px rgba(255,255,255,1)); } }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
@@ -157,7 +158,8 @@
                 teamColors: { A: '#e63946', B: '#0066ff', C: '#2ecc71', D: '#f39c12' },
                 lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
                 audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false,
-                holdSeconds: 0, lockCode: '', holdTimer: null, holdStart: null, pendingTeam: null, passTargetTeam: null
+                holdSeconds: 0, lockCode: '', holdTimer: null, holdStart: null, pendingTeam: null, passTargetTeam: null,
+                holdBeepTimer: null
             };
 
             var mainArena = document.getElementById('mainArena'), gameTimerDisplay = document.getElementById('gameTimerDisplay'),
@@ -174,6 +176,33 @@
                 passOk = document.getElementById('passOk'), passCancel = document.getElementById('passCancel'), panels = {};
 
             inputHoldSeconds.addEventListener('input', function() { holdSecondsLabel.textContent = this.value; });
+
+            // Звук при удержании
+            var holdBeepCtx = null;
+            function playHoldBeep() {
+                if (!holdBeepCtx) holdBeepCtx = new (window.AudioContext || window.webkitAudioContext)();
+                var ctx = holdBeepCtx;
+                var now = ctx.currentTime;
+                var o = ctx.createOscillator();
+                var g = ctx.createGain();
+                o.type = 'sine';
+                o.frequency.setValueAtTime(1000, now);
+                g.gain.setValueAtTime(0.2, now);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.start(now);
+                o.stop(now + 0.1);
+            }
+
+            function startHoldBeep() {
+                if (state.holdBeepTimer) clearInterval(state.holdBeepTimer);
+                playHoldBeep();
+                state.holdBeepTimer = setInterval(playHoldBeep, 500);
+            }
+            function stopHoldBeep() {
+                if (state.holdBeepTimer) { clearInterval(state.holdBeepTimer); state.holdBeepTimer = null; }
+            }
 
             function getAudioContext() { if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (state.audioCtx.state === 'suspended') state.audioCtx.resume(); return state.audioCtx; }
             function loadAudioFile(url, cb) { fetch(url).then(function(r) { return r.ok ? r.arrayBuffer() : null; }).then(function(b) { return b ? getAudioContext().decodeAudioData(b) : null; }).then(function(d) { if (d && cb) cb(url, d); }); }
@@ -233,9 +262,10 @@
                 state.pendingTeam = team; state.holdStart = Date.now();
                 var panel = panels[team];
                 var path = createHoldBorder(panel);
-                var totalLength = 400; // примерная длина периметра
+                var totalLength = 400;
                 path.setAttribute('stroke-dasharray', '0 ' + totalLength);
                 path.setAttribute('stroke-dashoffset', totalLength);
+                startHoldBeep(); // звук удержания
                 if (state.holdTimer) clearInterval(state.holdTimer);
                 var holdMs = state.holdSeconds * 1000;
                 state.holdTimer = setInterval(function() {
@@ -247,6 +277,7 @@
                     if (elapsed >= holdMs) {
                         clearInterval(state.holdTimer); state.holdTimer = null;
                         path.setAttribute('stroke-dasharray', '0 ' + totalLength);
+                        stopHoldBeep();
                         checkPassword(team); state.pendingTeam = null;
                     }
                 }, 100);
@@ -256,6 +287,7 @@
                 if (state.pendingTeam === team) state.pendingTeam = null;
                 var path = panels[team]?.querySelector('.border-path');
                 if (path) path.setAttribute('stroke-dasharray', '0 400');
+                stopHoldBeep();
             }
             function doCapture(team) { if (state.ended || !state.matchActive || state.currentHolder === team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
             function onPanelDown(team) { if (!state.matchActive || state.ended) return; if (state.holdSeconds > 0) startHold(team); else checkPassword(team); }
