@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель scorpTIMER</title>
+    <style>
+        :root {
+            --bg: #0a0a10;
+            --surface: #1a1a26;
+            --text: #ffffff;
+            --gold: #f4a261;
+            --red: #e76f51;
+            --green: #2ecc71;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .container { background: var(--surface); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 32px 24px; max-width: 500px; width: 100%; }
+        h1 { text-align: center; font-size: 1.8rem; color: var(--gold); margin-bottom: 8px; }
+        .subtitle { text-align: center; font-size: 0.85rem; opacity: 0.6; margin-bottom: 24px; }
+        label { display: block; font-weight: 600; margin: 16px 0 6px; font-size: 0.9rem; }
+        input, textarea { width: 100%; padding: 14px; background: #0f0f17; border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 14px; font-size: 1rem; resize: vertical; }
+        input:focus { border-color: var(--gold); outline: none; }
+        .status { padding: 12px; border-radius: 12px; margin-top: 16px; text-align: center; font-weight: 600; display: none; }
+        .status.success { background: rgba(46,204,113,0.2); color: var(--green); display: block; }
+        .status.error { background: rgba(231,111,81,0.2); color: var(--red); display: block; }
+        .status.info { background: rgba(244,162,97,0.2); color: var(--gold); display: block; }
+        button { width: 100%; margin-top: 20px; padding: 16px; background: var(--gold); color: #000; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        button:hover { box-shadow: 0 0 30px rgba(244,162,97,0.4); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .code-display { background: #000; padding: 16px; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; text-align: center; letter-spacing: 3px; margin-top: 16px; word-break: break-all; display: none; }
+        .divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 24px 0; }
+        .list { background: #0f0f17; border-radius: 12px; padding: 12px; max-height: 200px; overflow-y: auto; font-size: 0.8rem; font-family: monospace; word-break: break-all; }
+        .list .item { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .list .item:last-child { border-bottom: none; }
+        .small-btn { background: rgba(255,255,255,0.1); color: #fff; padding: 8px 16px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 scorpTIMER</h1>
+        <p class="subtitle">Админ-панель активации устройств</p>
+
+        <!-- Секция генерации кода -->
+        <label>🔑 ID устройства (от пользователя)</label>
+        <input type="text" id="deviceIdInput" placeholder="dev-abc123xyz...">
+        <button onclick="generateCode()">Сгенерировать код активации</button>
+        <div class="code-display" id="codeDisplay"></div>
+        <div class="status" id="genStatus"></div>
+
+        <hr class="divider">
+
+        <!-- Секция активации -->
+        <label>✅ Активировать устройство (добавить в белый список)</label>
+        <input type="text" id="activateIdInput" placeholder="dev-abc123xyz...">
+        <button onclick="activateDevice()">Активировать устройство</button>
+        <div class="status" id="actStatus"></div>
+
+        <hr class="divider">
+
+        <!-- Секция получения ID -->
+        <label>📋 Ваш ID устройства (если нужно)</label>
+        <input type="text" id="myDeviceId" readonly placeholder="Нажмите кнопку ниже">
+        <button class="small-btn" onclick="getMyId()">Показать мой ID устройства</button>
+        <div class="status" id="myIdStatus"></div>
+
+        <hr class="divider">
+
+        <!-- Секция списка активированных -->
+        <label>✅ Активированные устройства</label>
+        <button class="small-btn" onclick="loadActivatedList()">Загрузить список</button>
+        <div class="list" id="activatedList" style="display:none;"></div>
+        <div class="status" id="listStatus"></div>
+    </div>
+
+    <script>
+        const JSONBIN_BIN_ID = '69f9a562856a682189aa4915';
+        const JSONBIN_API_KEY = '$2a$10$dYI80f9TMdl5i01/t3Md8ea0lNY1JvpM4ILr4Ad5ZguD6fbdcSvTm';
+        const SECRET_KEY = 'ScorpTim3r_Secret!2026';
+
+        function generateFingerprint() {
+            const d = [navigator.userAgent, navigator.language, screen.colorDepth, screen.width+'x'+screen.height].join('|');
+            let h = 0;
+            for (let i = 0; i < d.length; i++) { h = ((h << 5) - h) + d.charCodeAt(i); h |= 0; }
+            return 'dev-' + Math.abs(h).toString(36);
+        }
+
+        async function jsonbinGet() {
+            const r = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+                headers: { 'X-Master-Key': JSONBIN_API_KEY }
+            });
+            if (!r.ok) throw new Error('Ошибка чтения jsonbin');
+            return (await r.json()).record;
+        }
+
+        async function jsonbinPut(data) {
+            await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+                method: 'PUT',
+                headers: {
+                    'X-Master-Key': JSONBIN_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+        }
+
+        async function generateCode() {
+            const deviceId = document.getElementById('deviceIdInput').value.trim();
+            const status = document.getElementById('genStatus');
+            const codeDisplay = document.getElementById('codeDisplay');
+
+            if (!deviceId) {
+                status.className = 'status error';
+                status.textContent = 'Введите ID устройства';
+                return;
+            }
+
+            try {
+                const encoder = new TextEncoder();
+                const key = await crypto.subtle.importKey('raw', encoder.encode(SECRET_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+                const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(deviceId));
+                const code = Array.from(new Uint8Array(signature))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('')
+                    .substring(0, 16)
+                    .toUpperCase();
+
+                codeDisplay.style.display = 'block';
+                codeDisplay.textContent = code;
+                status.className = 'status success';
+                status.textContent = '✅ Код сгенерирован! Отправьте его пользователю.';
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = 'Ошибка: ' + e.message;
+            }
+        }
+
+        async function activateDevice() {
+            const deviceId = document.getElementById('activateIdInput').value.trim();
+            const status = document.getElementById('actStatus');
+            const btn = document.querySelector('#actStatus').previousElementSibling;
+
+            if (!deviceId) {
+                status.className = 'status error';
+                status.textContent = 'Введите ID устройства';
+                return;
+            }
+
+            btn.disabled = true;
+            status.className = 'status info';
+            status.textContent = '⏳ Активирую...';
+
+            try {
+                const data = await jsonbinGet();
+                if (!Array.isArray(data.activated)) data.activated = [];
+                if (data.activated.includes(deviceId)) {
+                    status.className = 'status info';
+                    status.textContent = '⚠️ Устройство уже активировано';
+                } else {
+                    data.activated.push(deviceId);
+                    await jsonbinPut(data);
+                    status.className = 'status success';
+                    status.textContent = '✅ Устройство активировано навсегда!';
+                }
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = 'Ошибка: ' + e.message;
+            }
+            btn.disabled = false;
+        }
+
+        function getMyId() {
+            const id = generateFingerprint();
+            document.getElementById('myDeviceId').value = id;
+            document.getElementById('myIdStatus').className = 'status success';
+            document.getElementById('myIdStatus').textContent = '✅ Ваш ID устройства отображён выше';
+        }
+
+        async function loadActivatedList() {
+            const status = document.getElementById('listStatus');
+            const list = document.getElementById('activatedList');
+            
+            status.className = 'status info';
+            status.textContent = '⏳ Загружаю...';
+
+            try {
+                const data = await jsonbinGet();
+                const activated = data.activated || [];
+                
+                list.style.display = 'block';
+                if (activated.length === 0) {
+                    list.innerHTML = '<div class="item">Нет активированных устройств</div>';
+                } else {
+                    list.innerHTML = activated.map(id => `<div class="item">${id}</div>`).join('');
+                }
+                
+                status.className = 'status success';
+                status.textContent = `✅ Загружено ${activated.length} устройств`;
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = 'Ошибка: ' + e.message;
+            }
+        }
+    </script>
+</body>
+</html>
