@@ -160,6 +160,29 @@
             function playCaptureSound(color) { if (!state.audioLoaded) return; var f = getSoundForColor(color); if (state.buffers[f]) playBuffer(state.buffers[f], false); }
             function startSiren() { stopSiren(); if (state.buffers['siren.mp3']) state.activeSirenNode = playBuffer(state.buffers['siren.mp3'], true); }
             function stopSiren() { if (state.activeSirenNode) { try { state.activeSirenNode.stop(); } catch(e) {} state.activeSirenNode = null; } }
+
+            // Тихое тиканье
+            function playTick() {
+                if (!state.audioLoaded) return;
+                try {
+                    var ctx = getAudioContext(), now = ctx.currentTime;
+                    var o = ctx.createOscillator(), g = ctx.createGain();
+                    o.type = 'square'; o.frequency.setValueAtTime(800, now);
+                    g.gain.setValueAtTime(0.15, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    o.connect(g); g.connect(ctx.destination);
+                    o.start(now); o.stop(now + 0.06);
+                } catch(e) {}
+            }
+            var tickTimer = null;
+            function startTickSound() {
+                stopTickSound();
+                if (state.matchActive && state.currentHolder && state.audioLoaded) {
+                    playTick();
+                    tickTimer = setInterval(function() { if (state.matchActive && state.currentHolder) playTick(); else stopTickSound(); }, 1000);
+                }
+            }
+            function stopTickSound() { if (tickTimer) { clearInterval(tickTimer); tickTimer = null; } }
+
             function formatTime(sec) { var m = Math.floor(sec/60), s = Math.floor(sec%60); return (m<10?'0':'')+m+':'+(s<10?'0':'')+s; }
             function getWinningTeam() { var mx = null, mt = -1; ['A','B','C','D'].forEach(function(t) { if (state.times[t] > mt) { mt = state.times[t]; mx = t; } }); return mx; }
             function updateUI() {
@@ -183,13 +206,13 @@
                 btnPlayPause.textContent = state.matchActive ? '⏸' : '▶';
                 if (state.matchActive) btnPlayPause.classList.add('active'); else btnPlayPause.classList.remove('active');
             }
-            function capture(team) { if (state.ended || !state.matchActive || state.currentHolder===team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); updateUI(); }
+            function capture(team) { if (state.ended || !state.matchActive || state.currentHolder===team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
             function proceedStartMatch() { state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; state.lastTick = Date.now(); if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100); updateUI(); }
             function startMatch() { if (state.ended) resetMatch(); if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); } else proceedStartMatch(); }
-            function pauseMatch() { state.matchActive = false; stopSiren(); updateUI(); }
+            function pauseMatch() { state.matchActive = false; stopTickSound(); stopSiren(); updateUI(); }
             function toggleMatch() { if (state.ended) return; state.matchActive ? pauseMatch() : startMatch(); }
             function resetMatch() { pauseMatch(); state.timeLeft = state.matchDuration; state.ended = false; state.currentHolder = null; state.times = { A:0,B:0,C:0,D:0 }; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; stopSiren(); if (state.tickInterval) { clearInterval(state.tickInterval); state.tickInterval = null; } updateUI(); btnEndGame.style.display = 'none'; }
-            function endMatchByTimer() { state.matchActive = false; state.ended = true; state.currentHolder = null; stopSiren(); startSiren(); updateUI(); }
+            function endMatchByTimer() { state.matchActive = false; state.ended = true; state.currentHolder = null; stopTickSound(); startSiren(); updateUI(); }
             function finishGame() { stopSiren(); state.ended = false; state.currentHolder = null; updateUI(); }
             function gameTick() {
                 var now = Date.now(); if (!state.matchActive || !state.lastTick) { state.lastTick = now; return; }
