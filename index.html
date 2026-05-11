@@ -150,7 +150,17 @@
     </div>
 
     <script>
-        if ('serviceWorker' in navigator) { window.addEventListener('load', function() { navigator.serviceWorker.register('sw.js').catch(function() {}); }); }
+        // Принудительный сброс старого Service Worker, чтобы избежать ошибок редиректа
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (let registration of registrations) {
+                    await registration.unregister();
+                }
+                // Регистрируем актуальный Service Worker
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
 
         (function() {
             var state = {
