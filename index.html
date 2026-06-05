@@ -140,7 +140,7 @@
             <div class="modal-actions"><button class="btn primary" id="btnSaveSettings">💾 Сохранить</button><button class="btn danger" id="btnCloseSettings">✖ Закрыть</button></div>
             <div class="modal-footer">
                 <div class="donate-line">
-                    <a class="donate-link" href="https://www.tbank.ru/cf/13xfsNCdtja" target="_blank"><span class="donate-heart">♥️</span> поддержать проект любой суммой</a>
+                    <a class="donate-link" href="https://www.tbank.ru/cf/1MigoYhAzjz" target="_blank"><span class="donate-heart">♥️</span> поддержать проект любой суммой</a>
                 </div>
                 <div class="credit-line">
                     <img src="logo6.png" alt="logo"><span>created by XAH СК Скорпион (Сочи)</span>
@@ -171,7 +171,9 @@
                 lastTick: null, tickInterval: null, audioCtx: null, buffers: {}, activeSirenNode: null,
                 audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false,
                 holdSeconds: 0, lockCode: '', holdTimer: null, holdStart: null, pendingTeam: null, passTargetTeam: null,
-                zahvatAudio: null
+                zahvatAudio: null,
+                // Для Android: флаг, что удержание активно
+                isHolding: false
             };
 
             var mainArena = document.getElementById('mainArena'), gameTimerDisplay = document.getElementById('gameTimerDisplay'),
@@ -240,10 +242,18 @@
                 return { top: border.querySelector('.hold-line-top'), right: border.querySelector('.hold-line-right'), bottom: border.querySelector('.hold-line-bottom'), left: border.querySelector('.hold-line-left') };
             }
 
+            function resetHoldLines(team) {
+                var panel = panels[team];
+                if (!panel) return;
+                var b = panel.querySelector('.hold-line-top');
+                if (b) { b.style.width = '0%'; panel.querySelector('.hold-line-right').style.height = '0%'; panel.querySelector('.hold-line-bottom').style.width = '0%'; panel.querySelector('.hold-line-left').style.height = '0%'; }
+            }
+
             function startHold(team) {
                 if (!state.matchActive || state.ended) return;
                 if (state.currentHolder === team) return;
                 state.pendingTeam = team; state.holdStart = Date.now();
+                state.isHolding = true;
                 var panel = panels[team]; var border = createHoldBorder(panel);
                 var glow = state.teamColors[team];
                 border.top.style.boxShadow = '0 0 12px 4px ' + glow;
@@ -260,19 +270,56 @@
                     else if (quarter <= 2) { border.top.style.width = '100%'; border.right.style.height = ((quarter-1)*100) + '%'; border.bottom.style.width = '0%'; border.left.style.height = '0%'; }
                     else if (quarter <= 3) { border.top.style.width = '100%'; border.right.style.height = '100%'; border.bottom.style.width = ((quarter-2)*100) + '%'; border.left.style.height = '0%'; }
                     else { border.top.style.width = '100%'; border.right.style.height = '100%'; border.bottom.style.width = '100%'; border.left.style.height = ((quarter-3)*100) + '%'; }
-                    if (elapsed >= holdMs) { clearInterval(state.holdTimer); state.holdTimer = null; border.top.style.width = '0%'; border.right.style.height = '0%'; border.bottom.style.width = '0%'; border.left.style.height = '0%'; stopZahvatSound(); checkPassword(team); state.pendingTeam = null; }
+                    if (elapsed >= holdMs) {
+                        clearInterval(state.holdTimer); state.holdTimer = null;
+                        border.top.style.width = '0%'; border.right.style.height = '0%'; border.bottom.style.width = '0%'; border.left.style.height = '0%';
+                        stopZahvatSound();
+                        state.isHolding = false;
+                        checkPassword(team); state.pendingTeam = null;
+                    }
                 }, 100);
+
+                // Резервный таймаут на случай потери touchend (Android fix)
+                if (state.holdTimeout) clearTimeout(state.holdTimeout);
+                state.holdTimeout = setTimeout(function() {
+                    if (state.isHolding && state.pendingTeam === team) {
+                        cancelHold(team);
+                    }
+                }, holdMs + 1000); // даём +1 секунду на всякий случай
             }
+
             function cancelHold(team) {
                 if (state.holdTimer) { clearInterval(state.holdTimer); state.holdTimer = null; }
+                if (state.holdTimeout) { clearTimeout(state.holdTimeout); state.holdTimeout = null; }
                 if (state.pendingTeam === team) state.pendingTeam = null;
-                var panel = panels[team];
-                if (panel) { var b = panel.querySelector('.hold-line-top'); if (b) { b.style.width = '0%'; panel.querySelector('.hold-line-right').style.height = '0%'; panel.querySelector('.hold-line-bottom').style.width = '0%'; panel.querySelector('.hold-line-left').style.height = '0%'; } }
+                state.isHolding = false;
+                resetHoldLines(team);
                 stopZahvatSound();
             }
+
             function doCapture(team) { if (state.ended || !state.matchActive || state.currentHolder === team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
-            function onPanelDown(team) { if (!state.matchActive || state.ended) return; if (state.holdSeconds > 0) startHold(team); else checkPassword(team); }
-            function onPanelUp(team) { if (state.holdSeconds > 0) cancelHold(team); }
+            
+            // Обработчики касаний с защитой для Android
+            function onPanelDown(team) {
+                if (!state.matchActive || state.ended) return;
+                state.isHolding = true;
+                if (state.holdSeconds > 0) startHold(team);
+                else checkPassword(team);
+            }
+            function onPanelUp(team) {
+                if (state.holdSeconds > 0 && state.isHolding) {
+                    cancelHold(team);
+                }
+                state.isHolding = false;
+            }
+            // Дополнительно: touchmove тоже сбрасывает удержание (Android часто шлёт touchmove)
+            function onPanelMove(team) {
+                if (state.holdSeconds > 0 && state.isHolding && state.pendingTeam === team) {
+                    // Не сбрасываем полностью, только если палец далеко ушёл? 
+                    // Для простоты: при любом движении считаем что палец ушёл
+                    // Но это может мешать. Лучше игнорировать touchmove, оставим только резервный таймаут.
+                }
+            }
 
             function proceedStartMatch() { state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; state.lastTick = Date.now(); if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100); updateUI(); }
             function startMatch() { if (state.ended) resetMatch(); if (!state.audioLoaded) { preloadAudioFiles(); setTimeout(proceedStartMatch, 500); } else proceedStartMatch(); }
@@ -301,12 +348,18 @@
                     var team = String.fromCharCode(65+i);
                     var panel = document.createElement('div'); panel.className = 'team-panel inactive-for-start'; panel.style.backgroundColor = state.teamColors[team];
                     panel.innerHTML = '<div class="dim-overlay"></div><div class="team-content"><div class="team-name">'+state.teamNames[team]+'</div><div class="team-time" id="time'+team+'">00:00</div><div class="team-status" id="status'+team+'">ОЖИДАЙТЕ СТАРТА</div></div>';
-                    panel.addEventListener('mousedown', (function(t) { return function(e) { e.preventDefault(); onPanelDown(t); }; })(team));
-                    panel.addEventListener('mouseup', (function(t) { return function(e) { onPanelUp(t); }; })(team));
-                    panel.addEventListener('mouseleave', (function(t) { return function(e) { onPanelUp(t); }; })(team));
+                    
+                    // Используем pointerdown/pointerup для лучшей совместимости с Android
+                    panel.addEventListener('pointerdown', (function(t) { return function(e) { e.preventDefault(); onPanelDown(t); }; })(team));
+                    panel.addEventListener('pointerup', (function(t) { return function(e) { onPanelUp(t); }; })(team));
+                    panel.addEventListener('pointerleave', (function(t) { return function(e) { onPanelUp(t); }; })(team));
+                    panel.addEventListener('pointercancel', (function(t) { return function(e) { onPanelUp(t); }; })(team));
+                    
+                    // Дублируем touchstart/touchend для старых устройств
                     panel.addEventListener('touchstart', (function(t) { return function(e) { e.preventDefault(); onPanelDown(t); }; })(team), {passive: false});
                     panel.addEventListener('touchend', (function(t) { return function(e) { onPanelUp(t); }; })(team));
                     panel.addEventListener('touchcancel', (function(t) { return function(e) { onPanelUp(t); }; })(team));
+                    
                     mainArena.appendChild(panel); panels[team] = panel;
                 }
             }
