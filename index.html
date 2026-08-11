@@ -150,15 +150,15 @@
     </div>
 
     <script>
-        // Принудительный сброс старого Service Worker, чтобы избежать ошибок редиректа
+        // УДАЛЯЕМ СТАРЫЕ SERVICE WORKER И РЕГИСТРИРУЕМ НОВЫЙ
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (let registration of registrations) {
-                    await registration.unregister();
-                }
-                // Регистрируем актуальный Service Worker
-                navigator.serviceWorker.register('sw.js').catch(() => {});
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for (let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+                navigator.serviceWorker.register('sw.js?v=3').catch(function() {});
             });
         }
 
@@ -172,7 +172,6 @@
                 audioLoaded: false, warningPlayed: false, warning1minPlayed: false, tenMinPlayed: false, fiveMinPlayed: false,
                 holdSeconds: 0, lockCode: '', holdTimer: null, holdStart: null, pendingTeam: null, passTargetTeam: null,
                 zahvatAudio: null,
-                // Для Android: флаг, что удержание активно
                 isHolding: false
             };
 
@@ -279,13 +278,12 @@
                     }
                 }, 100);
 
-                // Резервный таймаут на случай потери touchend (Android fix)
                 if (state.holdTimeout) clearTimeout(state.holdTimeout);
                 state.holdTimeout = setTimeout(function() {
                     if (state.isHolding && state.pendingTeam === team) {
                         cancelHold(team);
                     }
-                }, holdMs + 1000); // даём +1 секунду на всякий случай
+                }, holdMs + 1000);
             }
 
             function cancelHold(team) {
@@ -299,7 +297,6 @@
 
             function doCapture(team) { if (state.ended || !state.matchActive || state.currentHolder === team) return; state.currentHolder = team; playCaptureSound(state.teamColors[team]); startTickSound(); updateUI(); }
             
-            // Обработчики касаний с защитой для Android
             function onPanelDown(team) {
                 if (!state.matchActive || state.ended) return;
                 state.isHolding = true;
@@ -311,14 +308,6 @@
                     cancelHold(team);
                 }
                 state.isHolding = false;
-            }
-            // Дополнительно: touchmove тоже сбрасывает удержание (Android часто шлёт touchmove)
-            function onPanelMove(team) {
-                if (state.holdSeconds > 0 && state.isHolding && state.pendingTeam === team) {
-                    // Не сбрасываем полностью, только если палец далеко ушёл? 
-                    // Для простоты: при любом движении считаем что палец ушёл
-                    // Но это может мешать. Лучше игнорировать touchmove, оставим только резервный таймаут.
-                }
             }
 
             function proceedStartMatch() { state.matchActive = true; state.warningPlayed = false; state.warning1minPlayed = false; state.tenMinPlayed = false; state.fiveMinPlayed = false; state.lastTick = Date.now(); if (!state.tickInterval) state.tickInterval = setInterval(gameTick, 100); updateUI(); }
@@ -349,13 +338,11 @@
                     var panel = document.createElement('div'); panel.className = 'team-panel inactive-for-start'; panel.style.backgroundColor = state.teamColors[team];
                     panel.innerHTML = '<div class="dim-overlay"></div><div class="team-content"><div class="team-name">'+state.teamNames[team]+'</div><div class="team-time" id="time'+team+'">00:00</div><div class="team-status" id="status'+team+'">ОЖИДАЙТЕ СТАРТА</div></div>';
                     
-                    // Используем pointerdown/pointerup для лучшей совместимости с Android
                     panel.addEventListener('pointerdown', (function(t) { return function(e) { e.preventDefault(); onPanelDown(t); }; })(team));
                     panel.addEventListener('pointerup', (function(t) { return function(e) { onPanelUp(t); }; })(team));
                     panel.addEventListener('pointerleave', (function(t) { return function(e) { onPanelUp(t); }; })(team));
                     panel.addEventListener('pointercancel', (function(t) { return function(e) { onPanelUp(t); }; })(team));
                     
-                    // Дублируем touchstart/touchend для старых устройств
                     panel.addEventListener('touchstart', (function(t) { return function(e) { e.preventDefault(); onPanelDown(t); }; })(team), {passive: false});
                     panel.addEventListener('touchend', (function(t) { return function(e) { onPanelUp(t); }; })(team));
                     panel.addEventListener('touchcancel', (function(t) { return function(e) { onPanelUp(t); }; })(team));
